@@ -3,6 +3,8 @@ import { runDueEmailAutomation } from "@/lib/emailAutomation";
 
 // cronから毎回叩かれるルートなので、Next.jsのキャッシュに載せず必ず生きた状態で実行する
 export const dynamic = "force-dynamic";
+// SMTP送信が複数件に及ぶとコールドスタート込みで時間がかかるため、実行時間の上限を伸ばす
+export const maxDuration = 60;
 
 export async function GET(request: Request) {
   const authHeader = request.headers.get("authorization");
