@@ -21,8 +21,15 @@ export function SchemeStepAddForm({ status }: { status: CustomerStatus }) {
         <input type="text" name="label" required placeholder="例：2ヶ月後" className="w-32 border border-gray-300 rounded-lg px-3 py-2 text-sm" />
       </div>
       <div>
-        <label className="block text-xs text-gray-500 mb-1">経過日数</label>
-        <input type="number" name="days_after" min={0} required placeholder="60" className="w-24 border border-gray-300 rounded-lg px-3 py-2 text-sm" />
+        <label className="block text-xs text-gray-500 mb-1">経過</label>
+        <input type="number" name="value" min={0} required placeholder="2" className="w-20 border border-gray-300 rounded-lg px-3 py-2 text-sm" />
+      </div>
+      <div>
+        <label className="block text-xs text-gray-500 mb-1">単位</label>
+        <select name="unit" defaultValue="day" className="border border-gray-300 rounded-lg px-3 py-2 text-sm">
+          <option value="day">日後</option>
+          <option value="month">ヶ月後（同じ日）</option>
+        </select>
       </div>
       <label className="flex items-center gap-1.5 text-sm text-gray-700 pb-2">
         <input type="checkbox" name="use_phone" className="w-4 h-4 rounded border-gray-300 text-brand focus:ring-brand" />

@@ -1,6 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendFollowUpEmail } from "@/lib/mailer";
-import { todayStrTokyo, nowTimeStrTokyo, addDaysToDateStr } from "@/lib/date";
+import { todayStrTokyo, nowTimeStrTokyo, addIntervalToDateStr } from "@/lib/date";
 import {
   followUpBaseDate,
   renderEmailBody,
@@ -162,7 +162,7 @@ async function runForStore(
         if (completion?.completed) continue;
         if (completion?.email_sent_at) continue; // 送信済み（二重送信防止）
 
-        const dueDate = addDaysToDateStr(base, step.days_after);
+        const dueDate = addIntervalToDateStr(base, step.days_after, step.months_after);
         if (dueDate > today) continue;
 
         const template = templateMap.get(step.id);

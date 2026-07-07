@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import { todayStrTokyo, addDaysToDateStr } from "@/lib/date";
+import { todayStrTokyo, addIntervalToDateStr } from "@/lib/date";
 import {
   followUpBaseDate,
   type Customer,
@@ -53,7 +53,7 @@ export async function getDueFollowUpTasks(storeId: number | null): Promise<DueTa
       if (step.status !== customer.status) continue;
       const completion = completionMap.get(`${customer.id}:${step.id}`);
       if (completion?.completed) continue;
-      const dueDate = addDaysToDateStr(base, step.days_after);
+      const dueDate = addIntervalToDateStr(base, step.days_after, step.months_after);
       if (dueDate <= today) {
         result.push({ step, due_date: dueDate, customer, email_sent_at: completion?.email_sent_at ?? null });
       }
@@ -97,7 +97,7 @@ export async function getFollowUpStepsForCustomer(customer: Customer): Promise<C
     const completion = completionMap.get(step.id);
     return {
       step,
-      due_date: addDaysToDateStr(base, step.days_after),
+      due_date: addIntervalToDateStr(base, step.days_after, step.months_after),
       completed: completion?.completed ?? false,
       email_sent_at: completion?.email_sent_at ?? null,
     };

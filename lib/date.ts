@@ -22,3 +22,22 @@ export function addDaysToDateStr(dateStr: string, days: number): string {
   const [y, m, d] = dateStr.split("-").map(Number);
   return new Date(Date.UTC(y, m - 1, d + days)).toISOString().slice(0, 10);
 }
+
+// 「翌月の同じ日」のようなカレンダー月単位の加算。対象月に同じ日が無い場合
+// （例: 1/31 + 1ヶ月）は月末にクランプする（1/31 + 1ヶ月 → 2/28 または 2/29）。
+export function addMonthsToDateStr(dateStr: string, months: number): string {
+  const [y, m, d] = dateStr.split("-").map(Number);
+  const targetMonthFirstDay = new Date(Date.UTC(y, m - 1 + months, 1));
+  const daysInTargetMonth = new Date(
+    Date.UTC(targetMonthFirstDay.getUTCFullYear(), targetMonthFirstDay.getUTCMonth() + 1, 0)
+  ).getUTCDate();
+  const clampedDay = Math.min(d, daysInTargetMonth);
+  return new Date(Date.UTC(targetMonthFirstDay.getUTCFullYear(), targetMonthFirstDay.getUTCMonth(), clampedDay))
+    .toISOString()
+    .slice(0, 10);
+}
+
+// スキームステップの起算日からの期日を計算する（月→日の順で加算）
+export function addIntervalToDateStr(dateStr: string, days: number, months: number): string {
+  return addDaysToDateStr(addMonthsToDateStr(dateStr, months), days);
+}

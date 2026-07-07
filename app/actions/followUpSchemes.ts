@@ -10,24 +10,36 @@ function revalidateAll() {
   revalidatePath("/");
 }
 
+function readInterval(formData: FormData): { error?: string; daysAfter: number; monthsAfter: number } {
+  const unit = String(formData.get("unit") ?? "day");
+  const value = Number(formData.get("value"));
+
+  if (Number.isNaN(value) || value < 0) {
+    return { error: "経過日数・月数は必須です。", daysAfter: 0, monthsAfter: 0 };
+  }
+
+  return unit === "month" ? { daysAfter: 0, monthsAfter: value } : { daysAfter: value, monthsAfter: 0 };
+}
+
 export async function createSchemeStep(_prevState: unknown, formData: FormData) {
   const supabase = await createClient();
 
   const status = String(formData.get("status") ?? "") as CustomerStatus;
-  const daysAfter = Number(formData.get("days_after"));
   const label = String(formData.get("label") ?? "").trim();
+  const { error: intervalError, daysAfter, monthsAfter } = readInterval(formData);
 
-  if (!status || Number.isNaN(daysAfter) || daysAfter < 0 || !label) {
-    return { error: "ステータス・経過日数・ラベルは必須です。" };
+  if (!status || intervalError || !label) {
+    return { error: intervalError ?? "ステータス・ラベルは必須です。" };
   }
 
   const { error } = await supabase.from("follow_up_scheme_steps").insert({
     status,
     days_after: daysAfter,
+    months_after: monthsAfter,
     label,
     use_phone: formData.get("use_phone") === "on",
     use_email: formData.get("use_email") === "on",
-    sort_order: daysAfter,
+    sort_order: daysAfter + monthsAfter * 30,
   });
 
   if (error) {
@@ -41,21 +53,22 @@ export async function createSchemeStep(_prevState: unknown, formData: FormData) 
 export async function updateSchemeStep(stepId: number, _prevState: unknown, formData: FormData) {
   const supabase = await createClient();
 
-  const daysAfter = Number(formData.get("days_after"));
   const label = String(formData.get("label") ?? "").trim();
+  const { error: intervalError, daysAfter, monthsAfter } = readInterval(formData);
 
-  if (Number.isNaN(daysAfter) || daysAfter < 0 || !label) {
-    return { error: "経過日数・ラベルは必須です。" };
+  if (intervalError || !label) {
+    return { error: intervalError ?? "ラベルは必須です。" };
   }
 
   const { error } = await supabase
     .from("follow_up_scheme_steps")
     .update({
       days_after: daysAfter,
+      months_after: monthsAfter,
       label,
       use_phone: formData.get("use_phone") === "on",
       use_email: formData.get("use_email") === "on",
-      sort_order: daysAfter,
+      sort_order: daysAfter + monthsAfter * 30,
     })
     .eq("id", stepId);
 

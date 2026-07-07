@@ -40,6 +40,7 @@ export interface FollowUpSchemeStep {
   id: number;
   status: CustomerStatus;
   days_after: number;
+  months_after: number;
   label: string;
   use_phone: boolean;
   use_email: boolean;

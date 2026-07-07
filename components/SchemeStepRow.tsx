@@ -33,15 +33,26 @@ export function SchemeStepRow({ step }: { step: FollowUpSchemeStep }) {
         />
       </div>
       <div>
-        <label className="block text-xs text-gray-500 mb-1">経過日数</label>
+        <label className="block text-xs text-gray-500 mb-1">経過</label>
         <input
           type="number"
-          name="days_after"
+          name="value"
           min={0}
           required
-          defaultValue={step.days_after}
-          className="w-24 border border-gray-300 rounded-lg px-3 py-2 text-sm"
+          defaultValue={step.months_after > 0 ? step.months_after : step.days_after}
+          className="w-20 border border-gray-300 rounded-lg px-3 py-2 text-sm"
         />
+      </div>
+      <div>
+        <label className="block text-xs text-gray-500 mb-1">単位</label>
+        <select
+          name="unit"
+          defaultValue={step.months_after > 0 ? "month" : "day"}
+          className="border border-gray-300 rounded-lg px-3 py-2 text-sm"
+        >
+          <option value="day">日後</option>
+          <option value="month">ヶ月後（同じ日）</option>
+        </select>
       </div>
       <label className="flex items-center gap-1.5 text-sm text-gray-700 pb-2">
         <input type="checkbox" name="use_phone" defaultChecked={step.use_phone} className="w-4 h-4 rounded border-gray-300 text-brand focus:ring-brand" />
