@@ -13,6 +13,9 @@ import { StatusFilterSelect } from "@/components/StatusFilterSelect";
 import { EmailSignatureEditor } from "@/components/EmailSignatureEditor";
 import { EmailAutomationSettings, EmailAutomationStatus } from "@/components/EmailAutomationSettings";
 
+// ステータス切り替え直後に古い内容が表示され続けることがないよう、キャッシュを使わせない
+export const dynamic = "force-dynamic";
+
 export default async function TemplatesPage({
   searchParams,
 }: {
