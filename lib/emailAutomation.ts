@@ -26,10 +26,11 @@ export async function sendAndRecordFollowUpEmail(params: {
   template: FollowUpTemplate;
   signature: string | null;
   fromEmail: string;
+  fromName: string;
   existingCompletion?: FollowUpTaskCompletion | null;
   logNote: string;
 }): Promise<void> {
-  const { supabase, customer, step, template, signature, fromEmail, existingCompletion, logNote } = params;
+  const { supabase, customer, step, template, signature, fromEmail, fromName, existingCompletion, logNote } = params;
 
   if (!customer.email) {
     throw new Error("お客様のメールアドレスが登録されていません。");
@@ -40,7 +41,7 @@ export async function sendAndRecordFollowUpEmail(params: {
 
   await sendFollowUpEmail({
     to: customer.email,
-    from: fromEmail,
+    from: { name: `【${fromName}】`, address: fromEmail },
     subject: renderEmailSubject(template.email_subject, customer.name),
     text: renderEmailBody(template.email_body, customer.name, signature),
   });
@@ -114,6 +115,9 @@ async function runForStore(
   }
   const fromEmail = automation.from_email;
 
+  const { data: storeRow } = await supabase.from("stores").select("name").eq("id", automation.store_id).maybeSingle();
+  const fromName = (storeRow as { name: string } | null)?.name ?? `店舗ID${automation.store_id}`;
+
   const { data: customersData } = await supabase
     .from("customers")
     .select("*")
@@ -175,6 +179,7 @@ async function runForStore(
             template,
             signature,
             fromEmail,
+            fromName,
             existingCompletion: completion,
             logNote: `自動送信（${step.label}）`,
           });

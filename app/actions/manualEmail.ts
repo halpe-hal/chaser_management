@@ -56,6 +56,9 @@ export async function sendFollowUpEmailNow(
     .maybeSingle();
   const signature = (signatureRow as StoreEmailSignature | null)?.signature ?? null;
 
+  const { data: storeRow } = await supabase.from("stores").select("name").eq("id", customer.store_id).maybeSingle();
+  const fromName = (storeRow as { name: string } | null)?.name ?? `店舗ID${customer.store_id}`;
+
   const { data: existingCompletionData } = await supabase
     .from("follow_up_task_completions")
     .select("*")
@@ -72,6 +75,7 @@ export async function sendFollowUpEmailNow(
       template,
       signature,
       fromEmail,
+      fromName,
       existingCompletion,
       logNote: `手動送信（${step.label}）`,
     });

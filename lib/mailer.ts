@@ -17,7 +17,12 @@ function getTransporter(): nodemailer.Transporter {
   return transporter;
 }
 
-export async function sendFollowUpEmail(opts: { to: string; from: string; subject: string; text: string }): Promise<void> {
+export async function sendFollowUpEmail(opts: {
+  to: string;
+  from: string | { name: string; address: string };
+  subject: string;
+  text: string;
+}): Promise<void> {
   await getTransporter().sendMail({
     to: opts.to,
     from: opts.from,
