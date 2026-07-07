@@ -77,6 +77,19 @@ export async function updateCustomer(customerId: number, _prevState: unknown, fo
   return { success: true };
 }
 
+export async function deleteCustomer(customerId: number): Promise<{ error?: string } | void> {
+  const supabase = await createClient();
+  const { error } = await supabase.from("customers").delete().eq("id", customerId);
+
+  if (error) {
+    return { error: "削除に失敗しました：" + error.message };
+  }
+
+  revalidatePath("/customers");
+  revalidatePath("/");
+  redirect("/customers");
+}
+
 export async function setRebooked(customerId: number, value: boolean) {
   const supabase = await createClient();
   await supabase.from("customers").update({ rebooked: value }).eq("id", customerId);
