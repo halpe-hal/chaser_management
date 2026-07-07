@@ -2,7 +2,24 @@
   "permissions": {
     "allow": [
       "Bash(npm -v)",
-      "Bash(npx --yes create-next-app@16.2.6 . --typescript --tailwind --app --eslint --no-src-dir --import-alias \"@/*\" --turbopack --no-git)"
+      "Bash(npx --yes create-next-app@16.2.6 . --typescript --tailwind --app --eslint --no-src-dir --import-alias \"@/*\" --turbopack --no-git)",
+      "Bash(npm install *)",
+      "Bash(cp /Users/nishimurashinpei/Web_app/store_sales_manager/.env.local /Users/nishimurashinpei/Web_app/chaser_management/.env.local && wc -l /Users/nishimurashinpei/Web_app/chaser_management/.env.local)",
+      "Bash(mkdir -p \"/Users/nishimurashinpei/Web_app/chaser_management/app/\\(app\\)/customers/new\" \"/Users/nishimurashinpei/Web_app/chaser_management/app/\\(app\\)/customers/[id]\")",
+      "Bash(npm run *)",
+      "Bash(npx --yes tsc --noEmit -p tsconfig.json)",
+      "Bash(echo \"EXIT:$?\")",
+      "Bash(curl -s -o /dev/null -w \"%{http_code} %{redirect_url}\\\\n\" http://localhost:3100/)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" http://localhost:3100/login)",
+      "Read(//tmp/**)",
+      "Bash(curl -s http://localhost:3100/login)",
+      "Bash(npx tsc *)",
+      "Read(//Users/nishimurashinpei/Web_app/minus_alert_manager/components/**)",
+      "Read(//Users/nishimurashinpei/Web_app/minus_alert_manager/app/actions/**)"
+    ],
+    "additionalDirectories": [
+      "/Users/nishimurashinpei/Web_app/store_sales_manager",
+      "/Users/nishimurashinpei/Web_app/chaser_management/app/(app)/customers"
     ]
   }
 }
