@@ -20,9 +20,17 @@ export default async function CustomersPage({
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-gray-900">顧客一覧</h1>
-        <Link href="/customers/new" className="bg-brand text-white text-sm font-semibold px-4 py-2 rounded-lg hover:bg-brand-dark transition-colors">
-          + 新規登録
-        </Link>
+        <div className="flex items-center gap-2">
+          <Link
+            href="/customers/import"
+            className="bg-white text-brand border border-brand text-sm font-semibold px-4 py-2 rounded-lg hover:bg-brand/5 transition-colors"
+          >
+            CSVインポート
+          </Link>
+          <Link href="/customers/new" className="bg-brand text-white text-sm font-semibold px-4 py-2 rounded-lg hover:bg-brand-dark transition-colors">
+            + 新規登録
+          </Link>
+        </div>
       </div>
 
       <form className="bg-white rounded-2xl shadow-sm border border-black/5 p-4 flex flex-wrap items-end gap-3">
