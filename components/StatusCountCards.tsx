@@ -2,7 +2,7 @@ import type { StatusCounts } from "@/lib/customers";
 import { CUSTOMER_STATUSES, type CustomerStatus } from "@/lib/types";
 
 const CARD_STYLES: Record<CustomerStatus, string> = {
-  未来店: "bg-emerald-100 text-emerald-900",
+  未来店: "bg-gray-100 text-gray-700",
   "入会（２年）": "bg-orange-200 text-orange-900",
   "入会（1年）": "bg-purple-100 text-purple-900",
   "入会（通常）": "bg-sky-300 text-sky-900",
