@@ -26,7 +26,7 @@ export async function updateTemplate(
     return { error: "保存に失敗しました：" + error.message };
   }
 
-  revalidatePath("/templates");
+  revalidatePath("/step-emails");
   revalidatePath("/");
   return { success: true };
 }

@@ -23,6 +23,9 @@ export const CUSTOMER_STATUSES: CustomerStatus[] = [
   "見込みなし（未来店）",
 ];
 
+// 追客スキーム・テンプレート管理の対象は「来店後もフォローが必要なステータス」のみに絞る
+export const FOLLOWUP_STATUSES: CustomerStatus[] = ["検討", "事前キャンセル", "無断キャンセル"];
+
 export const JOINED_STATUSES: CustomerStatus[] = ["入会（２年）", "入会（1年）", "入会（通常）"];
 
 export function isJoinedStatus(status: CustomerStatus): boolean {
@@ -114,7 +117,20 @@ export interface FollowUpSchemeStep {
   use_phone: boolean;
   use_email: boolean;
   sort_order: number;
+  // 設定した場合、この日までの期間限定スキームとなる（例：プレオープン期間中の特別対応）。
+  // 同じステータスに有効期限つきのステップがあり、今日がその期限内であれば、通常（期限なし）のステップより優先して使われる。
+  active_until: string | null;
+  // 設定した場合、経過日数ではなくこの日付そのものが送信予定日になる（固定日ステップ）
+  fixed_date: string | null;
   created_at: string;
+  updated_at: string;
+}
+
+// 全ステータス共通のグローバル設定（追客ステップの起算日リセット日など）
+export interface FollowUpGlobalSettings {
+  id: number;
+  // 設定した場合、この日を過ぎるとご予約日がこの日より前の顧客は、追客ステップの起算日がこの日にリセットされる
+  base_date_reset_date: string | null;
   updated_at: string;
 }
 

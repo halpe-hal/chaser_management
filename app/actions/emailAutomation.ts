@@ -20,6 +20,6 @@ export async function updateEmailAutomation(storeId: number, _prevState: unknown
     return { error: "保存に失敗しました：" + error.message };
   }
 
-  revalidatePath("/templates");
+  revalidatePath("/step-emails");
   return { success: true };
 }

@@ -4,6 +4,7 @@ import { useActionState } from "react";
 import { Trash2 } from "lucide-react";
 import type { FollowUpSchemeStep } from "@/lib/types";
 import { updateSchemeStep, deleteSchemeStep } from "@/app/actions/followUpSchemes";
+import { todayStrTokyo } from "@/lib/date";
 
 type FormState = { error?: string; success?: boolean } | null;
 
@@ -19,9 +20,19 @@ export function SchemeStepRow({ step }: { step: FollowUpSchemeStep }) {
     deleteSchemeStep(step.id);
   }
 
+  const isExpired = Boolean(step.active_until) && step.active_until! < todayStrTokyo();
+
   return (
     <form action={formAction} className="flex flex-wrap items-end gap-3 border border-gray-100 rounded-xl p-3">
       {state?.error && <p className="w-full text-sm text-red-600">{state.error}</p>}
+      {step.active_until && (
+        <p className={`w-full text-xs font-medium ${isExpired ? "text-gray-400" : "text-brand"}`}>
+          {isExpired ? `期限切れ（〜${step.active_until}）：通常のステップが使われています` : `期間限定スキーム（〜${step.active_until}）：現在このステップが優先的に使われています`}
+        </p>
+      )}
+      {step.fixed_date && (
+        <p className="w-full text-xs font-medium text-brand">固定日ステップ：{step.fixed_date} に送信予定</p>
+      )}
       <div>
         <label className="block text-xs text-gray-500 mb-1">ラベル</label>
         <input
@@ -38,7 +49,6 @@ export function SchemeStepRow({ step }: { step: FollowUpSchemeStep }) {
           type="number"
           name="value"
           min={0}
-          required
           defaultValue={step.months_after > 0 ? step.months_after : step.days_after}
           className="w-20 border border-gray-300 rounded-lg px-3 py-2 text-sm"
         />
@@ -53,6 +63,24 @@ export function SchemeStepRow({ step }: { step: FollowUpSchemeStep }) {
           <option value="day">日後</option>
           <option value="month">ヶ月後（同じ日）</option>
         </select>
+      </div>
+      <div>
+        <label className="block text-xs text-gray-500 mb-1">固定日（任意・指定時は経過日数より優先）</label>
+        <input
+          type="date"
+          name="fixed_date"
+          defaultValue={step.fixed_date ?? ""}
+          className="border border-gray-300 rounded-lg px-3 py-2 text-sm"
+        />
+      </div>
+      <div>
+        <label className="block text-xs text-gray-500 mb-1">有効期限（任意）</label>
+        <input
+          type="date"
+          name="active_until"
+          defaultValue={step.active_until ?? ""}
+          className="border border-gray-300 rounded-lg px-3 py-2 text-sm"
+        />
       </div>
       <label className="flex items-center gap-1.5 text-sm text-gray-700 pb-2">
         <input type="checkbox" name="use_phone" defaultChecked={step.use_phone} className="w-4 h-4 rounded border-gray-300 text-brand focus:ring-brand" />

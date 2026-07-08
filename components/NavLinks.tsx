@@ -11,9 +11,8 @@ const NAV_ITEMS = [
 ];
 
 const SETTINGS_ITEMS = [
-  { label: "テンプレート管理", href: "/templates" },
+  { label: "ステップメール管理", href: "/step-emails" },
   { label: "予約枠設定", href: "/schedule-settings" },
-  { label: "スキーム設定", href: "/schemes" },
   { label: "スタッフ設定", href: "/staff" },
 ];
 

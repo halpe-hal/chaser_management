@@ -44,3 +44,11 @@ export async function getValidatedStoreId(): Promise<number | null> {
   if (selected && stores.some((s) => s.id === selected)) return selected;
   return stores[0].id;
 }
+
+export const isAdminUser = cache(async (): Promise<boolean> => {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  return !!user && ADMIN_EMAILS.includes(user.email ?? "");
+});

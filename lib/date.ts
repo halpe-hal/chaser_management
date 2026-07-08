@@ -60,6 +60,13 @@ export function formatDateJa(dateStr: string): string {
   return `${m}月${d}日（${weekdayLabelJa(dayOfWeekForDateStr(dateStr))}）`;
 }
 
+// "YYYY-MM" からその月の初日・末日を求める（ダッシュボードの月別集計フィルター用）
+export function monthRangeToDateStrs(month: string): { from: string; to: string } {
+  const from = `${month}-01`;
+  const to = addDaysToDateStr(addMonthsToDateStr(from, 1), -1);
+  return { from, to };
+}
+
 // メール・CSV取り込み時、終了時刻がちょうどの時でない場合に次の正時へ繰り上げる（例: 14:45 → 15:00）
 export function ceilTimeToHour(time: string): string {
   const [h, m] = time.split(":").map(Number);

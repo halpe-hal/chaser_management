@@ -20,6 +20,12 @@ export function TemplateEditor({ step, template }: { step: FollowUpSchemeStep; t
       <h3 className="text-base font-semibold text-gray-900 mb-4">
         {step.label}
         <span className="ml-2 text-xs font-normal text-gray-500">（{channelLabel}）</span>
+        {step.active_until && (
+          <span className="ml-2 text-xs font-normal text-brand">期間限定（〜{step.active_until}）</span>
+        )}
+        {step.fixed_date && (
+          <span className="ml-2 text-xs font-normal text-brand">固定日（{step.fixed_date}）</span>
+        )}
       </h3>
       <form action={formAction} className="space-y-4">
         {state?.error && <p className="text-sm text-red-600">{state.error}</p>}

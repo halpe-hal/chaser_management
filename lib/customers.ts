@@ -9,11 +9,52 @@ import {
   type Customer,
   type ContactLog,
   type CustomerStatus,
+  type FollowUpGlobalSettings,
   type FollowUpSchemeStep,
   type FollowUpTaskCompletion,
 } from "@/lib/types";
 
 const todayStr = todayStrTokyo;
+
+// ステータスごとに、有効期限つきのステップ（例：プレオープン期間中の特別スキーム）がまだ期限内であれば
+// そちらを優先して使い、通常（期限なし）のステップは一時的に使わない。期限が過ぎれば自動的に通常へ戻る。
+// ダッシュボードのアラート一覧・自動送信バッチの両方から使う共通ロジック（挙動を食い違わせないため）。
+export function selectEffectiveSteps(steps: FollowUpSchemeStep[], today: string): FollowUpSchemeStep[] {
+  const byStatus = new Map<CustomerStatus, FollowUpSchemeStep[]>();
+  for (const step of steps) {
+    if (!byStatus.has(step.status)) byStatus.set(step.status, []);
+    byStatus.get(step.status)!.push(step);
+  }
+
+  const result: FollowUpSchemeStep[] = [];
+  for (const group of byStatus.values()) {
+    const activeLimited = group.filter((s) => s.active_until && s.active_until >= today);
+    result.push(...(activeLimited.length > 0 ? activeLimited : group.filter((s) => !s.active_until)));
+  }
+  return result;
+}
+
+export async function getBaseDateResetDate(supabase: SupabaseClient): Promise<string | null> {
+  const { data } = await supabase.from("follow_up_global_settings").select("*").eq("id", 1).maybeSingle();
+  return (data as FollowUpGlobalSettings | null)?.base_date_reset_date ?? null;
+}
+
+// リセット日が設定されていて今日がそれを過ぎている場合、ご予約日がリセット日より前の顧客は
+// 起算日をリセット日に統一する（例：プレオープン期間中に登録した顧客の起算日を、実際のオープン日に揃える）
+export function resolveFollowUpBaseDate(
+  customer: Pick<Customer, "status" | "reservation_date" | "pre_cancel_date">,
+  resetDate: string | null,
+  today: string
+): string {
+  if (resetDate && today >= resetDate && customer.reservation_date < resetDate) {
+    return resetDate;
+  }
+  return followUpBaseDate(customer);
+}
+
+export function computeDueDate(step: FollowUpSchemeStep, base: string): string {
+  return step.fixed_date ?? addIntervalToDateStr(base, step.days_after, step.months_after);
+}
 
 export interface DueTask {
   step: FollowUpSchemeStep;
@@ -37,7 +78,9 @@ export async function getDueFollowUpTasks(storeId: number | null): Promise<DueTa
     .select("*")
     .order("sort_order", { ascending: true });
   if (stepsError) throw stepsError;
-  const steps = (stepsData ?? []) as FollowUpSchemeStep[];
+  const today = todayStr();
+  const steps = selectEffectiveSteps((stepsData ?? []) as FollowUpSchemeStep[], today);
+  const resetDate = await getBaseDateResetDate(supabase);
 
   const { data: completionsData, error: completionsError } = await supabase
     .from("follow_up_task_completions")
@@ -48,16 +91,15 @@ export async function getDueFollowUpTasks(storeId: number | null): Promise<DueTa
     ((completionsData ?? []) as FollowUpTaskCompletion[]).map((c) => [`${c.customer_id}:${c.scheme_step_id}`, c])
   );
 
-  const today = todayStr();
   const result: DueTask[] = [];
 
   for (const customer of customers) {
-    const base = followUpBaseDate(customer);
+    const base = resolveFollowUpBaseDate(customer, resetDate, today);
     for (const step of steps) {
       if (step.status !== customer.status) continue;
       const completion = completionMap.get(`${customer.id}:${step.id}`);
       if (completion?.completed) continue;
-      const dueDate = addIntervalToDateStr(base, step.days_after, step.months_after);
+      const dueDate = computeDueDate(step, base);
       if (dueDate <= today) {
         result.push({ step, due_date: dueDate, customer, email_sent_at: completion?.email_sent_at ?? null });
       }
@@ -84,7 +126,8 @@ export async function getFollowUpStepsForCustomer(customer: Customer): Promise<C
     .eq("status", customer.status)
     .order("sort_order", { ascending: true });
   if (stepsError) throw stepsError;
-  const steps = (stepsData ?? []) as FollowUpSchemeStep[];
+  const today = todayStr();
+  const steps = selectEffectiveSteps((stepsData ?? []) as FollowUpSchemeStep[], today);
 
   const { data: completionsData, error: completionsError } = await supabase
     .from("follow_up_task_completions")
@@ -95,13 +138,14 @@ export async function getFollowUpStepsForCustomer(customer: Customer): Promise<C
     ((completionsData ?? []) as FollowUpTaskCompletion[]).map((c) => [c.scheme_step_id, c])
   );
 
-  const base = followUpBaseDate(customer);
+  const resetDate = await getBaseDateResetDate(supabase);
+  const base = resolveFollowUpBaseDate(customer, resetDate, today);
 
   return steps.map((step) => {
     const completion = completionMap.get(step.id);
     return {
       step,
-      due_date: addIntervalToDateStr(base, step.days_after, step.months_after),
+      due_date: computeDueDate(step, base),
       completed: completion?.completed ?? false,
       email_sent_at: completion?.email_sent_at ?? null,
     };
@@ -110,10 +154,17 @@ export async function getFollowUpStepsForCustomer(customer: Customer): Promise<C
 
 export type StatusCounts = Record<CustomerStatus, number> & { total: number };
 
-export async function getStatusCounts(storeId: number | null): Promise<StatusCounts> {
+export interface StatusCountsFilters {
+  dateFrom?: string;
+  dateTo?: string;
+}
+
+export async function getStatusCounts(storeId: number | null, filters: StatusCountsFilters = {}): Promise<StatusCounts> {
   const supabase = await createClient();
   let query = supabase.from("customers").select("status");
   if (storeId !== null) query = query.eq("store_id", storeId);
+  if (filters.dateFrom) query = query.gte("reservation_date", filters.dateFrom);
+  if (filters.dateTo) query = query.lte("reservation_date", filters.dateTo);
 
   const { data, error } = await query;
   if (error) throw error;
@@ -132,6 +183,64 @@ export function buildStatusCounts(customers: Pick<Customer, "status">[]): Status
   return counts;
 }
 
+export interface StaffJoinRate {
+  staffId: number | null;
+  staffName: string;
+  visited: number; // 来店率の分子と同じ定義（検討＋入会＋見込みなし（来店済）の人数）
+  joinRate: number | null; // 0-100（visitedが0のときは null）
+}
+
+// スタッフごとの入会率（来店した人数に対する入会人数の割合）を集計する
+export async function getStaffJoinRatesByStaff(
+  storeId: number | null,
+  filters: StatusCountsFilters = {}
+): Promise<StaffJoinRate[]> {
+  const supabase = await createClient();
+  let query = supabase.from("customers").select("status, staff_member_id");
+  if (storeId !== null) query = query.eq("store_id", storeId);
+  if (filters.dateFrom) query = query.gte("reservation_date", filters.dateFrom);
+  if (filters.dateTo) query = query.lte("reservation_date", filters.dateTo);
+
+  const { data, error } = await query;
+  if (error) throw error;
+  const rows = (data ?? []) as { status: CustomerStatus; staff_member_id: number | null }[];
+
+  const byStaff = new Map<number | null, { status: CustomerStatus }[]>();
+  for (const row of rows) {
+    if (!byStaff.has(row.staff_member_id)) byStaff.set(row.staff_member_id, []);
+    byStaff.get(row.staff_member_id)!.push({ status: row.status });
+  }
+
+  let staffNames = new Map<number, string>();
+  if (storeId !== null) {
+    const { data: staffData } = await supabase
+      .from("staff_members")
+      .select("id, name")
+      .eq("store_id", storeId)
+      .order("sort_order", { ascending: true });
+    staffNames = new Map(((staffData ?? []) as { id: number; name: string }[]).map((s) => [s.id, s.name]));
+  }
+
+  const result: StaffJoinRate[] = [];
+  for (const [staffId, group] of byStaff.entries()) {
+    const { visited, joined } = countVisitedAndJoined(buildStatusCounts(group));
+    result.push({
+      staffId,
+      staffName: staffId !== null ? staffNames.get(staffId) ?? "（削除済みスタッフ）" : "未設定",
+      visited,
+      joinRate: visited > 0 ? (joined / visited) * 100 : null,
+    });
+  }
+
+  result.sort((a, b) => {
+    if (a.staffId === null) return 1;
+    if (b.staffId === null) return -1;
+    return a.staffId - b.staffId;
+  });
+
+  return result;
+}
+
 export interface DashboardStats {
   totalReservations: number;
   visitRate: number | null; // 0-100（対象0件のときは null）
@@ -144,12 +253,20 @@ export interface DashboardStats {
 // 「見込みなし（未来店）」は事前キャンセル・無断キャンセルと同じ「来店しなかった」側として扱う。
 // 入会率は、さらに来店しなかった側も母数から除いた（＝実際に来店した人数に対する）割合とする。
 // 再予約率は、来店に至らなかった予約（事前キャンセル・無断キャンセル・見込みなし（未来店）・再予約済）のうち、再予約済の割合とする。
-export function computeDashboardStats(counts: StatusCounts): DashboardStats {
+// 来店した人数（検討＋入会全プラン＋見込みなし（来店済））と、そのうち入会した人数を求める
+function countVisitedAndJoined(counts: StatusCounts): { visited: number; joined: number } {
   const joined = JOINED_STATUSES.reduce((sum, s) => sum + counts[s], 0);
   const notUpcoming = counts.total - counts["未来店"];
   const visitDenominator = notUpcoming - counts["再予約済"];
   const didNotVisit = counts["事前キャンセル"] + counts["無断キャンセル"] + counts["見込みなし（未来店）"];
-  const visited = visitDenominator - didNotVisit;
+  return { visited: visitDenominator - didNotVisit, joined };
+}
+
+export function computeDashboardStats(counts: StatusCounts): DashboardStats {
+  const notUpcoming = counts.total - counts["未来店"];
+  const visitDenominator = notUpcoming - counts["再予約済"];
+  const didNotVisit = counts["事前キャンセル"] + counts["無断キャンセル"] + counts["見込みなし（未来店）"];
+  const { visited, joined } = countVisitedAndJoined(counts);
 
   const rebookDenominator = didNotVisit + counts["再予約済"];
 

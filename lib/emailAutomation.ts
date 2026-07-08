@@ -1,8 +1,8 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendFollowUpEmail } from "@/lib/mailer";
-import { todayStrTokyo, nowTimeStrTokyo, addIntervalToDateStr } from "@/lib/date";
+import { todayStrTokyo, nowTimeStrTokyo } from "@/lib/date";
+import { computeDueDate, getBaseDateResetDate, resolveFollowUpBaseDate, selectEffectiveSteps } from "@/lib/customers";
 import {
-  followUpBaseDate,
   isJoinedStatus,
   renderEmailBody,
   renderEmailSubject,
@@ -127,8 +127,12 @@ async function runForStore(
   const customers = ((customersData ?? []) as Customer[]).filter((c) => !isJoinedStatus(c.status));
 
   if (customers.length > 0) {
-    const { data: stepsData } = await supabase.from("follow_up_scheme_steps").select("*").eq("use_email", true);
-    const steps = (stepsData ?? []) as FollowUpSchemeStep[];
+    // 有効期限つきステップの優先判定はステータス単位で行うため、まず全ステップを取得してから絞り込む
+    // （use_emailだけで先に絞ると、電話のみの期間限定ステップの存在を見落として判定を誤るため）
+    const { data: stepsData } = await supabase.from("follow_up_scheme_steps").select("*");
+    const allSteps = (stepsData ?? []) as FollowUpSchemeStep[];
+    const steps = selectEffectiveSteps(allSteps, today).filter((s) => s.use_email);
+    const resetDate = await getBaseDateResetDate(supabase);
 
     const { data: templatesData } = await supabase
       .from("follow_up_templates")
@@ -153,7 +157,7 @@ async function runForStore(
 
     for (const customer of customers) {
       if (!customer.email) continue;
-      const base = followUpBaseDate(customer);
+      const base = resolveFollowUpBaseDate(customer, resetDate, today);
 
       for (const step of steps) {
         if (step.status !== customer.status) continue;
@@ -163,7 +167,7 @@ async function runForStore(
         if (completion?.completed) continue;
         if (completion?.email_sent_at) continue; // 送信済み（二重送信防止）
 
-        const dueDate = addIntervalToDateStr(base, step.days_after, step.months_after);
+        const dueDate = computeDueDate(step, base);
         if (dueDate > today) continue;
 
         const template = templateMap.get(step.id);

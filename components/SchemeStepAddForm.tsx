@@ -22,7 +22,7 @@ export function SchemeStepAddForm({ status }: { status: CustomerStatus }) {
       </div>
       <div>
         <label className="block text-xs text-gray-500 mb-1">経過</label>
-        <input type="number" name="value" min={0} required placeholder="2" className="w-20 border border-gray-300 rounded-lg px-3 py-2 text-sm" />
+        <input type="number" name="value" min={0} placeholder="2" className="w-20 border border-gray-300 rounded-lg px-3 py-2 text-sm" />
       </div>
       <div>
         <label className="block text-xs text-gray-500 mb-1">単位</label>
@@ -30,6 +30,14 @@ export function SchemeStepAddForm({ status }: { status: CustomerStatus }) {
           <option value="day">日後</option>
           <option value="month">ヶ月後（同じ日）</option>
         </select>
+      </div>
+      <div>
+        <label className="block text-xs text-gray-500 mb-1">固定日（任意・指定時は経過日数より優先）</label>
+        <input type="date" name="fixed_date" className="border border-gray-300 rounded-lg px-3 py-2 text-sm" />
+      </div>
+      <div>
+        <label className="block text-xs text-gray-500 mb-1">有効期限（任意）</label>
+        <input type="date" name="active_until" className="border border-gray-300 rounded-lg px-3 py-2 text-sm" />
       </div>
       <label className="flex items-center gap-1.5 text-sm text-gray-700 pb-2">
         <input type="checkbox" name="use_phone" className="w-4 h-4 rounded border-gray-300 text-brand focus:ring-brand" />
