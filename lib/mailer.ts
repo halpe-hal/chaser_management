@@ -20,12 +20,14 @@ function getTransporter(): nodemailer.Transporter {
 export async function sendFollowUpEmail(opts: {
   to: string;
   from: string | { name: string; address: string };
+  bcc?: string;
   subject: string;
   text: string;
 }): Promise<void> {
   await getTransporter().sendMail({
     to: opts.to,
     from: opts.from,
+    bcc: opts.bcc,
     subject: opts.subject,
     text: opts.text,
   });

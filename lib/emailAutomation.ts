@@ -42,6 +42,7 @@ export async function sendAndRecordFollowUpEmail(params: {
   await sendFollowUpEmail({
     to: customer.email,
     from: { name: `【${fromName}】`, address: fromEmail },
+    bcc: fromEmail,
     subject: renderEmailSubject(template.email_subject, customer.name),
     text: renderEmailBody(template.email_body, customer.name, signature),
   });
