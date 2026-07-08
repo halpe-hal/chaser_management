@@ -3,9 +3,20 @@ import { getValidatedStoreId } from "@/lib/stores";
 import { buildScheduleRows, getAllTimeSlots, getReservationsForDate, getScheduleCapacityForDate } from "@/lib/schedule";
 import { buildStatusCounts, computeDashboardStats } from "@/lib/customers";
 import { dayOfWeekForDateStr, todayStrTokyo } from "@/lib/date";
+import type { CustomerStatus } from "@/lib/types";
 import { ScheduleDateNav } from "@/components/ScheduleDateNav";
 import { ScheduleGrid } from "@/components/ScheduleGrid";
 import { ScheduleDayStats } from "@/components/ScheduleDayStats";
+import { StatusCountCards } from "@/components/StatusCountCards";
+
+const DAY_BREAKDOWN_STATUSES: CustomerStatus[] = [
+  "入会（２年）",
+  "入会（1年）",
+  "入会（通常）",
+  "検討",
+  "事前キャンセル",
+  "無断キャンセル",
+];
 
 export const dynamic = "force-dynamic";
 
@@ -32,7 +43,8 @@ export default async function SchedulePage({ searchParams }: { searchParams: Pro
     .map((c) => c.reservation_time)
     .filter((t): t is string => Boolean(t));
   const rows = buildScheduleRows(allSlots, dayOfWeekForDateStr(dateStr), reservationTimes);
-  const dayStats = computeDashboardStats(buildStatusCounts(reservations));
+  const dayCounts = buildStatusCounts(reservations);
+  const dayStats = computeDashboardStats(dayCounts);
 
   return (
     <div className="space-y-6">
@@ -49,6 +61,11 @@ export default async function SchedulePage({ searchParams }: { searchParams: Pro
       <ScheduleDateNav date={dateStr} />
 
       <ScheduleDayStats stats={dayStats} />
+
+      <div>
+        <h2 className="text-sm font-semibold text-gray-700 mb-3">ステータス内訳</h2>
+        <StatusCountCards counts={dayCounts} statuses={DAY_BREAKDOWN_STATUSES} wrap={false} />
+      </div>
 
       <ScheduleGrid storeId={storeId} date={dateStr} rows={rows} capacity={capacity} reservations={reservations} />
     </div>

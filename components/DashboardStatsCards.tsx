@@ -1,4 +1,4 @@
-import { CalendarDays, DoorOpen, Repeat, UserPlus, type LucideIcon } from "lucide-react";
+import { CalendarDays, DoorOpen, Repeat, UserPlus, Users, type LucideIcon } from "lucide-react";
 import type { DashboardStats } from "@/lib/customers";
 
 function formatRate(rate: number | null): string {
@@ -16,11 +16,18 @@ interface StatTile {
 export function DashboardStatsCards({ stats }: { stats: DashboardStats }) {
   const tiles: StatTile[] = [
     {
-      label: "現在の予約数",
+      label: "予約数",
       value: String(stats.totalReservations),
       icon: CalendarDays,
       iconClass: "text-blue-600",
       chipClass: "bg-blue-50",
+    },
+    {
+      label: "会員数",
+      value: String(stats.memberCount),
+      icon: Users,
+      iconClass: "text-indigo-600",
+      chipClass: "bg-indigo-50",
     },
     {
       label: "来店率",
@@ -46,7 +53,7 @@ export function DashboardStatsCards({ stats }: { stats: DashboardStats }) {
   ];
 
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
       {tiles.map(({ label, value, icon: Icon, iconClass, chipClass }) => (
         <div
           key={label}

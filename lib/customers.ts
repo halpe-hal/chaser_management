@@ -243,6 +243,8 @@ export async function getStaffJoinRatesByStaff(
 
 export interface DashboardStats {
   totalReservations: number;
+  visitedCount: number; // 来店率の分子と同じ人数（検討＋入会全プラン＋見込みなし（来店済））
+  memberCount: number; // 入会ステータス（２年・1年・通常）の合計
   visitRate: number | null; // 0-100（対象0件のときは null）
   joinRate: number | null; // 0-100（対象0件のときは null）
   rebookRate: number | null; // 0-100（対象0件のときは null）
@@ -272,6 +274,8 @@ export function computeDashboardStats(counts: StatusCounts): DashboardStats {
 
   return {
     totalReservations: counts.total,
+    visitedCount: visited,
+    memberCount: joined,
     visitRate: visitDenominator > 0 ? (visited / visitDenominator) * 100 : null,
     joinRate: visited > 0 ? (joined / visited) * 100 : null,
     rebookRate: rebookDenominator > 0 ? (counts["再予約済"] / rebookDenominator) * 100 : null,

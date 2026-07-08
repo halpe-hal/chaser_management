@@ -5,20 +5,22 @@ function formatRate(rate: number | null): string {
 }
 
 export function ScheduleDayStats({ stats }: { stats: DashboardStats }) {
+  const tiles = [
+    { label: "予約数", value: String(stats.totalReservations) },
+    { label: "来店数", value: String(stats.visitedCount) },
+    { label: "来店率", value: formatRate(stats.visitRate) },
+    { label: "入会数", value: String(stats.memberCount) },
+    { label: "入会率", value: formatRate(stats.joinRate) },
+  ];
+
   return (
-    <div className="flex flex-wrap gap-4">
-      <div className="rounded-2xl shadow-sm p-4 bg-white border border-black/5 flex-1 min-w-[8rem]">
-        <p className="text-xs font-medium text-gray-500">この日の予約数</p>
-        <p className="text-2xl font-bold mt-1 text-gray-900">{stats.totalReservations}</p>
-      </div>
-      <div className="rounded-2xl shadow-sm p-4 bg-white border border-black/5 flex-1 min-w-[8rem]">
-        <p className="text-xs font-medium text-gray-500">来店率</p>
-        <p className="text-2xl font-bold mt-1 text-gray-900">{formatRate(stats.visitRate)}</p>
-      </div>
-      <div className="rounded-2xl shadow-sm p-4 bg-white border border-black/5 flex-1 min-w-[8rem]">
-        <p className="text-xs font-medium text-gray-500">入会率</p>
-        <p className="text-2xl font-bold mt-1 text-gray-900">{formatRate(stats.joinRate)}</p>
-      </div>
+    <div className="grid grid-flow-col auto-cols-fr gap-4">
+      {tiles.map(({ label, value }) => (
+        <div key={label} className="rounded-2xl shadow-sm p-4 bg-white border border-black/5 min-w-0">
+          <p className="text-xs font-medium text-gray-500 truncate">{label}</p>
+          <p className="text-2xl font-bold mt-1 text-gray-900 truncate">{value}</p>
+        </div>
+      ))}
     </div>
   );
 }
