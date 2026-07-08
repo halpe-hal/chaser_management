@@ -7,13 +7,15 @@ import { CUSTOMER_STATUSES, type CustomerStatus } from "@/lib/types";
 export default async function CustomersPage({
   searchParams,
 }: {
-  searchParams: Promise<{ status?: string; q?: string }>;
+  searchParams: Promise<{ status?: string; q?: string; date_from?: string; date_to?: string }>;
 }) {
-  const { status = "all", q = "" } = await searchParams;
+  const { status = "all", q = "", date_from = "", date_to = "" } = await searchParams;
   const storeId = await getValidatedStoreId();
   const customers = await getCustomers(storeId, {
     status: status as CustomerStatus | "all",
     search: q,
+    dateFrom: date_from,
+    dateTo: date_to,
   });
 
   return (
@@ -54,6 +56,14 @@ export default async function CustomersPage({
             placeholder="例：山田"
             className="border border-gray-300 rounded-lg px-3 py-2 text-sm"
           />
+        </div>
+        <div>
+          <label className="block text-xs text-gray-500 mb-1">ご予約日（から）</label>
+          <input type="date" name="date_from" defaultValue={date_from} className="border border-gray-300 rounded-lg px-3 py-2 text-sm" />
+        </div>
+        <div>
+          <label className="block text-xs text-gray-500 mb-1">ご予約日（まで）</label>
+          <input type="date" name="date_to" defaultValue={date_to} className="border border-gray-300 rounded-lg px-3 py-2 text-sm" />
         </div>
         <button type="submit" className="bg-brand text-white text-sm font-semibold px-4 py-2 rounded-lg hover:bg-brand-dark transition-colors">
           絞り込み

@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "追客管理",
+  title: "顧客管理",
   description: "見学者の追客ステータス・アラート管理",
 };
 

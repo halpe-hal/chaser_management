@@ -1,9 +1,11 @@
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
 import { todayStrTokyo, addIntervalToDateStr } from "@/lib/date";
 import {
   followUpBaseDate,
   isJoinedStatus,
   CUSTOMER_STATUSES,
+  JOINED_STATUSES,
   type Customer,
   type ContactLog,
   type CustomerStatus,
@@ -125,9 +127,33 @@ export async function getStatusCounts(storeId: number | null): Promise<StatusCou
   return counts;
 }
 
+export interface DashboardStats {
+  totalReservations: number;
+  visitRate: number | null; // 0-100（対象0件のときは null）
+  joinRate: number | null; // 0-100（対象0件のときは null）
+}
+
+// 来店率は「未来店」（まだ来店予定日を迎えていない）と「再予約済」（結果が別の予約に持ち越し）を
+// 母数から除いた、結果が確定している予約に対する割合として算出する。
+// 入会率は、さらに事前キャンセル・無断キャンセルも母数から除いた（＝実際に来店した人数に対する）割合とする。
+export function computeDashboardStats(counts: StatusCounts): DashboardStats {
+  const joined = JOINED_STATUSES.reduce((sum, s) => sum + counts[s], 0);
+  const notUpcoming = counts.total - counts["未来店"];
+  const visitDenominator = notUpcoming - counts["再予約済"];
+  const visited = visitDenominator - counts["事前キャンセル"] - counts["無断キャンセル"];
+
+  return {
+    totalReservations: counts.total,
+    visitRate: visitDenominator > 0 ? (visited / visitDenominator) * 100 : null,
+    joinRate: visited > 0 ? (joined / visited) * 100 : null,
+  };
+}
+
 export interface CustomerListFilters {
   status?: CustomerStatus | "all";
   search?: string;
+  dateFrom?: string;
+  dateTo?: string;
 }
 
 export async function getCustomers(storeId: number | null, filters: CustomerListFilters = {}): Promise<Customer[]> {
@@ -139,6 +165,8 @@ export async function getCustomers(storeId: number | null, filters: CustomerList
   if (filters.search) {
     query = query.or(`name.ilike.%${filters.search}%,phone.ilike.%${filters.search}%`);
   }
+  if (filters.dateFrom) query = query.gte("reservation_date", filters.dateFrom);
+  if (filters.dateTo) query = query.lte("reservation_date", filters.dateTo);
 
   const { data, error } = await query;
   if (error) throw error;
@@ -150,6 +178,42 @@ export async function getCustomer(id: number): Promise<Customer | null> {
   const { data, error } = await supabase.from("customers").select("*").eq("id", id).maybeSingle();
   if (error) throw error;
   return data as Customer | null;
+}
+
+// ペアでご来店の同伴者（この顧客に紐付いている別の顧客レコード）を取得する
+export async function getCompanions(customerId: number): Promise<Customer[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("customers")
+    .select("*")
+    .eq("paired_customer_id", customerId)
+    .order("created_at", { ascending: true });
+  if (error) throw error;
+  return (data ?? []) as Customer[];
+}
+
+// メール・CSV取り込みで新しい予約が入った際、電話番号かメールアドレスが一致する既存顧客がいれば、
+// その顧客の以前の来店結果は今回の予約に持ち越されたとみなして「再予約済」にする。
+export async function markMatchingCustomersAsRebooked(
+  supabase: SupabaseClient,
+  storeId: number,
+  contact: { email: string | null; phone: string | null }
+): Promise<void> {
+  if (!contact.email && !contact.phone) return;
+
+  const { data } = await supabase.from("customers").select("id, email, phone, status").eq("store_id", storeId);
+
+  const matchIds = ((data ?? []) as { id: number; email: string | null; phone: string | null; status: CustomerStatus }[])
+    .filter(
+      (c) =>
+        c.status !== "再予約済" &&
+        ((contact.email && c.email === contact.email) || (contact.phone && c.phone === contact.phone))
+    )
+    .map((c) => c.id);
+
+  if (matchIds.length > 0) {
+    await supabase.from("customers").update({ status: "再予約済" }).in("id", matchIds);
+  }
 }
 
 export async function getContactLogs(customerId: number): Promise<ContactLog[]> {

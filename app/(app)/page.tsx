@@ -1,7 +1,8 @@
 import { createClient } from "@/lib/supabase/server";
 import { getValidatedStoreId } from "@/lib/stores";
-import { getDueFollowUpTasks, getStatusCounts } from "@/lib/customers";
+import { computeDashboardStats, getDueFollowUpTasks, getStatusCounts } from "@/lib/customers";
 import { StatusCountCards } from "@/components/StatusCountCards";
+import { DashboardStatsCards } from "@/components/DashboardStatsCards";
 import { FollowUpAlertList } from "@/components/FollowUpAlertList";
 import type { FollowUpTemplate, StoreEmailSignature } from "@/lib/types";
 
@@ -31,10 +32,13 @@ export default async function DashboardPage() {
     templates[row.scheme_step_id] = row;
   }
   const signature = (signatureRow as StoreEmailSignature | null)?.signature ?? null;
+  const stats = computeDashboardStats(counts);
 
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-bold text-gray-900">ダッシュボード</h1>
+
+      <DashboardStatsCards stats={stats} />
 
       <StatusCountCards counts={counts} />
 

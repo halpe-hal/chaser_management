@@ -20,7 +20,7 @@ export async function Header() {
     <header className="bg-brand text-white">
       <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between gap-6">
         <div className="flex items-center gap-8">
-          <span className="font-bold tracking-wide whitespace-nowrap">追客管理</span>
+          <span className="font-bold tracking-wide whitespace-nowrap">顧客管理</span>
           <NavLinks isAdmin={isAdmin} />
         </div>
         <div className="flex items-center gap-3">

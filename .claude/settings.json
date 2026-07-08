@@ -15,7 +15,9 @@
       "Bash(curl -s http://localhost:3100/login)",
       "Bash(npx tsc *)",
       "Read(//Users/nishimurashinpei/Web_app/minus_alert_manager/components/**)",
-      "Read(//Users/nishimurashinpei/Web_app/minus_alert_manager/app/actions/**)"
+      "Read(//Users/nishimurashinpei/Web_app/minus_alert_manager/app/actions/**)",
+      "WebSearch",
+      "Bash(node -e \"console.log\\(Object.keys\\(require\\('/Users/nishimurashinpei/Web_app/chaser_management/node_modules/csv-parse/package.json'\\).exports\\)\\)\")"
     ],
     "additionalDirectories": [
       "/Users/nishimurashinpei/Web_app/store_sales_manager",

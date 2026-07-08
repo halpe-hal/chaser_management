@@ -20,7 +20,7 @@ export default async function CustomersImportPage() {
       {storeId === null ? (
         <p className="text-sm text-gray-500">店舗が選択されていません。</p>
       ) : (
-        <div className="bg-white rounded-2xl shadow-sm border border-black/5 p-6 max-w-xl">
+        <div className="bg-white rounded-2xl shadow-sm border border-black/5 p-6 max-w-4xl">
           <CustomerImportForm storeId={storeId} />
         </div>
       )}

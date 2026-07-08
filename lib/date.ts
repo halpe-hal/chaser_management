@@ -41,3 +41,29 @@ export function addMonthsToDateStr(dateStr: string, months: number): string {
 export function addIntervalToDateStr(dateStr: string, days: number, months: number): string {
   return addDaysToDateStr(addMonthsToDateStr(dateStr, months), days);
 }
+
+// "YYYY-MM-DD" の曜日を返す（0=日 1=月 ... 6=土）。カレンダー上の日付そのものなのでタイムゾーンに依存しない。
+export function dayOfWeekForDateStr(dateStr: string): number {
+  const [y, m, d] = dateStr.split("-").map(Number);
+  return new Date(Date.UTC(y, m - 1, d)).getUTCDay();
+}
+
+const WEEKDAY_LABELS_JA = ["日", "月", "火", "水", "木", "金", "土"];
+
+export function weekdayLabelJa(dayOfWeek: number): string {
+  return WEEKDAY_LABELS_JA[dayOfWeek];
+}
+
+// 例: "2026-07-11" → "7月11日（土）"
+export function formatDateJa(dateStr: string): string {
+  const [, m, d] = dateStr.split("-").map(Number);
+  return `${m}月${d}日（${weekdayLabelJa(dayOfWeekForDateStr(dateStr))}）`;
+}
+
+// メール・CSV取り込み時、終了時刻がちょうどの時でない場合に次の正時へ繰り上げる（例: 14:45 → 15:00）
+export function ceilTimeToHour(time: string): string {
+  const [h, m] = time.split(":").map(Number);
+  if (m === 0) return `${String(h).padStart(2, "0")}:00`;
+  const nextHour = (h + 1) % 24;
+  return `${String(nextHour).padStart(2, "0")}:00`;
+}

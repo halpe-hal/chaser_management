@@ -32,9 +32,52 @@ export interface Customer {
   phone: string | null;
   email: string | null;
   reservation_date: string;
+  reservation_time: string | null; // "HH:mm:ss"
+  reservation_end_time: string | null; // "HH:mm:ss"
+  slot_number: number | null;
   status: CustomerStatus;
   pre_cancel_date: string | null;
+  staff_member_id: number | null;
+  // ペアでご来店の同伴者を、別の顧客レコードとしてこの顧客に紐付ける場合の参照先ID
+  paired_customer_id: number | null;
   created_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+// 店舗ごとに管理者が設定する予約枠（曜日ごとの受付時間）
+export interface StoreTimeSlot {
+  id: number;
+  store_id: number;
+  day_of_week: number; // 0=日 1=月 ... 6=土
+  time: string; // "HH:mm:ss"
+  sort_order: number;
+  created_at: string;
+}
+
+// 店舗ごとの同時受け入れ人数（予約表の列数）の基本値
+export interface StoreScheduleSettings {
+  store_id: number;
+  capacity: number;
+  updated_at: string;
+}
+
+// 特定期間だけ基本人数を上書きする設定（例：6/27〜28のみ5名）
+export interface StoreScheduleCapacityOverride {
+  id: number;
+  store_id: number;
+  start_date: string; // "YYYY-MM-DD"
+  end_date: string; // "YYYY-MM-DD"
+  capacity: number;
+  created_at: string;
+}
+
+// 店舗ごとに管理者が登録・編集・削除できる対応スタッフ
+export interface StaffMember {
+  id: number;
+  store_id: number;
+  name: string;
+  sort_order: number;
   created_at: string;
   updated_at: string;
 }
