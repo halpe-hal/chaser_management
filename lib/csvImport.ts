@@ -134,6 +134,7 @@ export interface ExistingCustomerRow {
   reservation_time: string | null;
   slot_number: number | null;
   status: CustomerStatus;
+  created_at: string;
 }
 
 export interface CsvPlanRow {
@@ -143,14 +144,21 @@ export interface CsvPlanRow {
   reservationDate: string | null;
   reservationTime: string | null;
   reservationEndTime: string | null;
-  outcome: "import" | "duplicate" | "no_date";
+  outcome: "import" | "rebook" | "duplicate" | "no_date";
   slotNumber: number | null;
   slotFull: boolean;
-  // このお客様の登録によって「再予約済」に更新される既存顧客のID一覧（電話番号かメールアドレスが一致）
-  rebookIds: number[];
+  // outcome === "rebook" のとき、新しい予約情報へ更新・移動させる既存顧客のID（重複レコードを作らないため）
+  rebookTargetId: number | null;
+  // 電話番号・メールアドレスが一致する既存顧客が複数見つかった場合、移動対象以外は「再予約済」にするだけにとどめる
+  extraRebookIds: number[];
 }
 
-// パースしたCSV行と既存顧客データから、実際に取り込んだ場合の結果（登録／重複スキップ／枠の空き状況／再予約判定）を
+interface RebookCandidate {
+  id: number;
+  created_at: string;
+}
+
+// パースしたCSV行と既存顧客データから、実際に取り込んだ場合の結果（登録／再予約／重複スキップ／枠の空き状況）を
 // 計算する。DBへの書き込みは行わない純粋関数にしておくことで、プレビューと実際の取り込みで同じロジックを使い、
 // 表示内容と実際の結果が食い違わないようにしている。
 export function buildCsvImportPlan(
@@ -160,18 +168,37 @@ export function buildCsvImportPlan(
 ): CsvPlanRow[] {
   const existingKeys = new Set(existingRows.map((c) => `${c.email ?? ""}:${c.phone ?? ""}:${c.reservation_date}`));
 
-  const idsByEmail = new Map<string, number[]>();
-  const idsByPhone = new Map<string, number[]>();
+  // 電話番号・メールアドレスが一致する既存顧客（まだ再予約済でないもの）を、作成日時が新しい順に持っておく。
+  // CSV内の複数行が同じ既存顧客を取り合わないよう、マッチした分はその都度リストから取り除く。
+  const byEmail = new Map<string, RebookCandidate[]>();
+  const byPhone = new Map<string, RebookCandidate[]>();
   for (const c of existingRows) {
     if (c.status === "再予約済") continue;
+    const candidate: RebookCandidate = { id: c.id, created_at: c.created_at };
     if (c.email) {
-      if (!idsByEmail.has(c.email)) idsByEmail.set(c.email, []);
-      idsByEmail.get(c.email)!.push(c.id);
+      if (!byEmail.has(c.email)) byEmail.set(c.email, []);
+      byEmail.get(c.email)!.push(candidate);
     }
     if (c.phone) {
-      if (!idsByPhone.has(c.phone)) idsByPhone.set(c.phone, []);
-      idsByPhone.get(c.phone)!.push(c.id);
+      if (!byPhone.has(c.phone)) byPhone.set(c.phone, []);
+      byPhone.get(c.phone)!.push(candidate);
     }
+  }
+  const byCreatedAtDesc = (a: RebookCandidate, b: RebookCandidate) => b.created_at.localeCompare(a.created_at);
+  byEmail.forEach((list) => list.sort(byCreatedAtDesc));
+  byPhone.forEach((list) => list.sort(byCreatedAtDesc));
+
+  function takeRebookMatches(email: string | null, phone: string | null): RebookCandidate[] {
+    const merged = new Map<number, RebookCandidate>();
+    (email ? byEmail.get(email) ?? [] : []).forEach((c) => merged.set(c.id, c));
+    (phone ? byPhone.get(phone) ?? [] : []).forEach((c) => merged.set(c.id, c));
+    const matches = Array.from(merged.values()).sort(byCreatedAtDesc);
+
+    const usedIds = new Set(matches.map((m) => m.id));
+    if (email && byEmail.has(email)) byEmail.set(email, byEmail.get(email)!.filter((c) => !usedIds.has(c.id)));
+    if (phone && byPhone.has(phone)) byPhone.set(phone, byPhone.get(phone)!.filter((c) => !usedIds.has(c.id)));
+
+    return matches;
   }
 
   // 予約枠（date+time）ごとに、既に使われているslot_numberを集計しておく（CSV内の複数行も同じ枠を取り合うため逐次更新する）
@@ -209,27 +236,33 @@ export function buildCsvImportPlan(
     };
 
     if (!row.reservationDate) {
-      plan.push({ ...base, outcome: "no_date", slotNumber: null, slotFull: false, rebookIds: [] });
+      plan.push({ ...base, outcome: "no_date", slotNumber: null, slotFull: false, rebookTargetId: null, extraRebookIds: [] });
       continue;
     }
 
     const key = `${row.email ?? ""}:${row.phone ?? ""}:${row.reservationDate}`;
     if (existingKeys.has(key)) {
-      plan.push({ ...base, outcome: "duplicate", slotNumber: null, slotFull: false, rebookIds: [] });
+      plan.push({ ...base, outcome: "duplicate", slotNumber: null, slotFull: false, rebookTargetId: null, extraRebookIds: [] });
       continue;
     }
     existingKeys.add(key);
 
-    const rebookIds = Array.from(
-      new Set([...(row.email ? idsByEmail.get(row.email) ?? [] : []), ...(row.phone ? idsByPhone.get(row.phone) ?? [] : [])])
-    );
+    const [target, ...extra] = takeRebookMatches(row.email, row.phone);
 
     let slotNumber: number | null = null;
     if (row.reservationTime) {
       slotNumber = assignSlot(row.reservationDate, row.reservationTime);
     }
+    const slotFull = Boolean(row.reservationTime) && slotNumber === null;
 
-    plan.push({ ...base, outcome: "import", slotNumber, slotFull: Boolean(row.reservationTime) && slotNumber === null, rebookIds });
+    plan.push({
+      ...base,
+      outcome: target ? "rebook" : "import",
+      slotNumber,
+      slotFull,
+      rebookTargetId: target?.id ?? null,
+      extraRebookIds: extra.map((c) => c.id),
+    });
   }
 
   return plan;

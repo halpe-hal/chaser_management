@@ -149,16 +149,20 @@ export function computeDashboardStats(counts: StatusCounts): DashboardStats {
   };
 }
 
+export type CustomerSortBy = "reservation_date" | "created_at";
+
 export interface CustomerListFilters {
   status?: CustomerStatus | "all";
   search?: string;
   dateFrom?: string;
   dateTo?: string;
+  sortBy?: CustomerSortBy;
 }
 
 export async function getCustomers(storeId: number | null, filters: CustomerListFilters = {}): Promise<Customer[]> {
   const supabase = await createClient();
-  let query = supabase.from("customers").select("*").order("reservation_date", { ascending: false });
+  const sortBy = filters.sortBy === "created_at" ? "created_at" : "reservation_date";
+  let query = supabase.from("customers").select("*").order(sortBy, { ascending: false });
 
   if (storeId !== null) query = query.eq("store_id", storeId);
   if (filters.status && filters.status !== "all") query = query.eq("status", filters.status);
@@ -192,28 +196,33 @@ export async function getCompanions(customerId: number): Promise<Customer[]> {
   return (data ?? []) as Customer[];
 }
 
-// メール・CSV取り込みで新しい予約が入った際、電話番号かメールアドレスが一致する既存顧客がいれば、
-// その顧客の以前の来店結果は今回の予約に持ち越されたとみなして「再予約済」にする。
-export async function markMatchingCustomersAsRebooked(
+export interface RebookMatch {
+  id: number;
+  created_at: string;
+}
+
+// メール・CSV取り込みで新しい予約が入った際、電話番号かメールアドレスが一致する既存顧客（まだ再予約済でないもの）を、
+// 作成日時が新しい順に返す。呼び出し側は先頭（最新）を新しい予約情報へ移動させる対象として使う。
+export async function findRebookMatches(
   supabase: SupabaseClient,
   storeId: number,
   contact: { email: string | null; phone: string | null }
-): Promise<void> {
-  if (!contact.email && !contact.phone) return;
+): Promise<RebookMatch[]> {
+  if (!contact.email && !contact.phone) return [];
 
-  const { data } = await supabase.from("customers").select("id, email, phone, status").eq("store_id", storeId);
+  const { data } = await supabase
+    .from("customers")
+    .select("id, email, phone, status, created_at")
+    .eq("store_id", storeId);
 
-  const matchIds = ((data ?? []) as { id: number; email: string | null; phone: string | null; status: CustomerStatus }[])
+  return ((data ?? []) as { id: number; email: string | null; phone: string | null; status: CustomerStatus; created_at: string }[])
     .filter(
       (c) =>
         c.status !== "再予約済" &&
         ((contact.email && c.email === contact.email) || (contact.phone && c.phone === contact.phone))
     )
-    .map((c) => c.id);
-
-  if (matchIds.length > 0) {
-    await supabase.from("customers").update({ status: "再予約済" }).in("id", matchIds);
-  }
+    .sort((a, b) => b.created_at.localeCompare(a.created_at))
+    .map((c) => ({ id: c.id, created_at: c.created_at }));
 }
 
 export async function getContactLogs(customerId: number): Promise<ContactLog[]> {

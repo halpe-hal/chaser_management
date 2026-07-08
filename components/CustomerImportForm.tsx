@@ -6,6 +6,7 @@ import type { CsvPlanRow } from "@/lib/csvImport";
 
 const OUTCOME_LABEL: Record<CsvPlanRow["outcome"], string> = {
   import: "取り込む",
+  rebook: "既存顧客を再予約済にして日時を更新",
   duplicate: "重複のためスキップ",
   no_date: "予約日不明のためスキップ",
 };
@@ -61,6 +62,7 @@ export function CustomerImportForm({ storeId }: { storeId: number }) {
   }
 
   const importCount = plan?.filter((r) => r.outcome === "import").length ?? 0;
+  const rebookCount = plan?.filter((r) => r.outcome === "rebook").length ?? 0;
 
   return (
     <div className="space-y-4">
@@ -110,36 +112,39 @@ export function CustomerImportForm({ storeId }: { storeId: number }) {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {plan.map((row, i) => (
-                  <tr key={i} className={row.outcome !== "import" ? "text-gray-400" : "text-gray-900"}>
-                    <td className="px-3 py-2">{row.name}</td>
-                    <td className="px-3 py-2">{row.email ?? "-"}</td>
-                    <td className="px-3 py-2">{row.phone ?? "-"}</td>
-                    <td className="px-3 py-2">{row.reservationDate ?? "-"}</td>
-                    <td className="px-3 py-2">
-                      {row.reservationTime
-                        ? `${row.reservationTime}${row.reservationEndTime ? `〜${row.reservationEndTime}` : ""}`
-                        : "-"}
-                    </td>
-                    <td className="px-3 py-2">
-                      {OUTCOME_LABEL[row.outcome]}
-                      {row.outcome === "import" && row.slotFull && "／満席のため表に非表示"}
-                      {row.outcome === "import" && row.rebookIds.length > 0 && "／既存顧客を再予約済に更新"}
-                    </td>
-                  </tr>
-                ))}
+                {plan.map((row, i) => {
+                  const isActive = row.outcome === "import" || row.outcome === "rebook";
+                  return (
+                    <tr key={i} className={isActive ? "text-gray-900" : "text-gray-400"}>
+                      <td className="px-3 py-2">{row.name}</td>
+                      <td className="px-3 py-2">{row.email ?? "-"}</td>
+                      <td className="px-3 py-2">{row.phone ?? "-"}</td>
+                      <td className="px-3 py-2">{row.reservationDate ?? "-"}</td>
+                      <td className="px-3 py-2">
+                        {row.reservationTime
+                          ? `${row.reservationTime}${row.reservationEndTime ? `〜${row.reservationEndTime}` : ""}`
+                          : "-"}
+                      </td>
+                      <td className="px-3 py-2">
+                        {OUTCOME_LABEL[row.outcome]}
+                        {isActive && row.slotFull && "／満席のため表に非表示"}
+                        {row.outcome === "rebook" && row.extraRebookIds.length > 0 && `／他${row.extraRebookIds.length}件も再予約済に更新`}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
 
           <p className="text-sm text-gray-600">
-            {plan.length}件中 {importCount}件を取り込みます。
+            {plan.length}件中 新規登録 {importCount}件・再予約更新 {rebookCount}件を行います。
           </p>
 
           <button
             type="button"
             onClick={handleImport}
-            disabled={isImporting || importCount === 0}
+            disabled={isImporting || (importCount === 0 && rebookCount === 0)}
             className="bg-brand text-white text-sm font-semibold px-4 py-2 rounded-lg hover:bg-brand-dark transition-colors disabled:opacity-50"
           >
             {isImporting ? "取り込み中..." : "この内容で取り込む"}

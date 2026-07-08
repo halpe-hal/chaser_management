@@ -43,7 +43,7 @@ async function parseAndBuildPlan(
   const [{ data: existingData }, defaultCapacity, capacityOverrides] = await Promise.all([
     supabase
       .from("customers")
-      .select("id, email, phone, reservation_date, reservation_time, slot_number, status")
+      .select("id, email, phone, reservation_date, reservation_time, slot_number, status, created_at")
       .eq("store_id", storeId),
     getDefaultScheduleCapacity(storeId, supabase),
     getCapacityOverrides(storeId, supabase),
@@ -100,9 +100,30 @@ export async function importCustomersCsv(
     }
   }
 
-  const rebookIds = Array.from(new Set(plan.flatMap((p) => p.rebookIds)));
-  if (rebookIds.length > 0) {
-    await supabase.from("customers").update({ status: "再予約済" }).in("id", rebookIds);
+  // 一致する既存顧客が見つかった行は、新規登録せずにその顧客を新しい予約情報へ移動させ、
+  // ステータスを「再予約済」にする（重複レコードを作らないため）
+  const rebookRows = plan.filter((p) => p.outcome === "rebook");
+  for (const p of rebookRows) {
+    await supabase
+      .from("customers")
+      .update({
+        name: p.name,
+        email: p.email,
+        phone: p.phone,
+        reservation_date: p.reservationDate!,
+        reservation_time: p.reservationTime,
+        reservation_end_time: p.reservationTime ? p.reservationEndTime : null,
+        slot_number: p.slotNumber,
+        status: "再予約済",
+        pre_cancel_date: null,
+      })
+      .eq("id", p.rebookTargetId!);
+  }
+
+  // 同じ連絡先で複数の既存顧客がマッチしてしまった場合、移動対象以外は再予約済にするだけにとどめる
+  const extraRebookIds = Array.from(new Set(plan.flatMap((p) => p.extraRebookIds)));
+  if (extraRebookIds.length > 0) {
+    await supabase.from("customers").update({ status: "再予約済" }).in("id", extraRebookIds);
   }
 
   revalidatePath("/customers");
@@ -113,8 +134,8 @@ export async function importCustomersCsv(
     imported: toInsert.length,
     skippedDuplicate: plan.filter((p) => p.outcome === "duplicate").length,
     skippedNoDate: plan.filter((p) => p.outcome === "no_date").length,
-    unassignedSlot: plan.filter((p) => p.outcome === "import" && p.slotFull).length,
-    rebooked: rebookIds.length,
+    unassignedSlot: plan.filter((p) => p.outcome !== "duplicate" && p.outcome !== "no_date" && p.slotFull).length,
+    rebooked: rebookRows.length + extraRebookIds.length,
     total: plan.length,
     warnings,
   };

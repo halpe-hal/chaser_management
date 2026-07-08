@@ -1,21 +1,22 @@
 import Link from "next/link";
 import { getValidatedStoreId } from "@/lib/stores";
-import { getCustomers } from "@/lib/customers";
+import { getCustomers, type CustomerSortBy } from "@/lib/customers";
 import { CustomerRow } from "@/components/CustomerRow";
 import { CUSTOMER_STATUSES, type CustomerStatus } from "@/lib/types";
 
 export default async function CustomersPage({
   searchParams,
 }: {
-  searchParams: Promise<{ status?: string; q?: string; date_from?: string; date_to?: string }>;
+  searchParams: Promise<{ status?: string; q?: string; date_from?: string; date_to?: string; sort?: string }>;
 }) {
-  const { status = "all", q = "", date_from = "", date_to = "" } = await searchParams;
+  const { status = "all", q = "", date_from = "", date_to = "", sort = "reservation_date" } = await searchParams;
   const storeId = await getValidatedStoreId();
   const customers = await getCustomers(storeId, {
     status: status as CustomerStatus | "all",
     search: q,
     dateFrom: date_from,
     dateTo: date_to,
+    sortBy: sort as CustomerSortBy,
   });
 
   return (
@@ -64,6 +65,13 @@ export default async function CustomersPage({
         <div>
           <label className="block text-xs text-gray-500 mb-1">ご予約日（まで）</label>
           <input type="date" name="date_to" defaultValue={date_to} className="border border-gray-300 rounded-lg px-3 py-2 text-sm" />
+        </div>
+        <div>
+          <label className="block text-xs text-gray-500 mb-1">並び順</label>
+          <select name="sort" defaultValue={sort} className="border border-gray-300 rounded-lg px-3 py-2 text-sm">
+            <option value="reservation_date">ご予約日（新しい順）</option>
+            <option value="created_at">登録日時（新しい順）</option>
+          </select>
         </div>
         <button type="submit" className="bg-brand text-white text-sm font-semibold px-4 py-2 rounded-lg hover:bg-brand-dark transition-colors">
           絞り込み

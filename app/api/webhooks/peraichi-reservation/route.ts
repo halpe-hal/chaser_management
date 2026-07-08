@@ -3,7 +3,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { ceilTimeToHour, todayStrTokyo } from "@/lib/date";
 import { assignSlotNumber, getScheduleCapacityForDate } from "@/lib/schedule";
 import { detectPartySizeFromText, withPartySizeSuffix } from "@/lib/partySize";
-import { markMatchingCustomersAsRebooked } from "@/lib/customers";
+import { findRebookMatches } from "@/lib/customers";
 
 // Zapierからの都度呼び出しなので、キャッシュを使わせず必ず生きた状態で実行する
 export const dynamic = "force-dynamic";
@@ -116,8 +116,10 @@ export async function POST(request: Request) {
     return NextResponse.json({ skipped: true, reason: "duplicate" });
   }
 
-  // 同じ電話番号・メールアドレスの既存顧客がいれば、その顧客は再予約されたとみなしてステータスを更新する
-  await markMatchingCustomersAsRebooked(supabase, storeId, { email, phone });
+  // 同じ電話番号・メールアドレスの既存顧客がいれば、新規登録は行わず、その顧客を
+  // 「再予約済」にした上で新しい予約日時へ移動させる（重複レコードを作らないため）
+  const rebookMatches = await findRebookMatches(supabase, storeId, { email, phone });
+  const [primaryMatch, ...extraMatches] = rebookMatches;
 
   // 予約時間が取れた場合のみ、その日時の空き枠を見て表示位置（slot_number）を割り当てる。
   // 満席でも登録自体は行い、その場合はスケジュール表には表示されない（顧客一覧には残る）。
@@ -125,6 +127,37 @@ export async function POST(request: Request) {
   if (reservationTime) {
     const capacity = await getScheduleCapacityForDate(storeId, reservationDate, supabase);
     slotNumber = await assignSlotNumber(supabase, storeId, reservationDate, reservationTime, capacity);
+  }
+
+  // 複数マッチしてしまった場合、最新の1件だけを移動させ、それ以外は再予約済にするだけにとどめる
+  if (extraMatches.length > 0) {
+    await supabase
+      .from("customers")
+      .update({ status: "再予約済" })
+      .in("id", extraMatches.map((m) => m.id));
+  }
+
+  if (primaryMatch) {
+    const { error: updateError } = await supabase
+      .from("customers")
+      .update({
+        name,
+        email,
+        phone,
+        reservation_date: reservationDate,
+        reservation_time: reservationTime,
+        reservation_end_time: reservationEndTime,
+        slot_number: slotNumber,
+        status: "再予約済",
+        pre_cancel_date: null,
+      })
+      .eq("id", primaryMatch.id);
+
+    if (updateError) {
+      return NextResponse.json({ error: updateError.message }, { status: 500 });
+    }
+
+    return NextResponse.json({ rebooked: true, customerId: primaryMatch.id });
   }
 
   const { error: insertError } = await supabase.from("customers").insert({
