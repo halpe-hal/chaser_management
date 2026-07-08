@@ -3,7 +3,6 @@ import { getCustomer, getContactLogs, getFollowUpStepsForCustomer } from "@/lib/
 import { isAdminUser } from "@/lib/stores";
 import { updateCustomer } from "@/app/actions/customers";
 import { CustomerForm } from "@/components/CustomerForm";
-import { CustomerFlags } from "@/components/CustomerFlags";
 import { ContactLogPanel } from "@/components/ContactLogPanel";
 import { FollowUpTaskList } from "@/components/FollowUpTaskList";
 import { DeleteCustomerButton } from "@/components/DeleteCustomerButton";
@@ -27,10 +26,6 @@ export default async function CustomerDetailPage({ params }: { params: Promise<{
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-gray-900">{customer.name} さん</h1>
         {isAdmin && <DeleteCustomerButton customerId={customer.id} customerName={customer.name} />}
-      </div>
-
-      <div className="bg-white rounded-2xl shadow-sm border border-black/5 p-6">
-        <CustomerFlags customerId={customer.id} rebooked={customer.rebooked} joined={customer.joined} />
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">

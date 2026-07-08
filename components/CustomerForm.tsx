@@ -19,7 +19,7 @@ export function CustomerForm({
   submitLabel: string;
 }) {
   const [state, formAction, isPending] = useActionState(action, null);
-  const [status, setStatus] = useState<CustomerStatus>(defaultValues?.status ?? "検討");
+  const [status, setStatus] = useState<CustomerStatus>(defaultValues?.status ?? "未来店");
 
   return (
     <form action={formAction} className="space-y-4 max-w-xl">

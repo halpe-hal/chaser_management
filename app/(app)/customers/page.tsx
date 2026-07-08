@@ -60,7 +60,6 @@ export default async function CustomersPage({
               <th className="text-left px-4 py-3 font-medium">ご予約日</th>
               <th className="text-left px-4 py-3 font-medium">電話番号</th>
               <th className="text-left px-4 py-3 font-medium">ステータス</th>
-              <th className="text-left px-4 py-3 font-medium">フラグ</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
@@ -69,7 +68,7 @@ export default async function CustomersPage({
             ))}
             {customers.length === 0 && (
               <tr>
-                <td colSpan={5} className="px-4 py-8 text-center text-gray-400">
+                <td colSpan={4} className="px-4 py-8 text-center text-gray-400">
                   該当する顧客がいません。
                 </td>
               </tr>

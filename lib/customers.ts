@@ -2,6 +2,8 @@ import { createClient } from "@/lib/supabase/server";
 import { todayStrTokyo, addIntervalToDateStr } from "@/lib/date";
 import {
   followUpBaseDate,
+  isJoinedStatus,
+  CUSTOMER_STATUSES,
   type Customer,
   type ContactLog,
   type CustomerStatus,
@@ -21,11 +23,11 @@ export interface DueTask {
 export async function getDueFollowUpTasks(storeId: number | null): Promise<DueTask[]> {
   const supabase = await createClient();
 
-  let customersQuery = supabase.from("customers").select("*").eq("joined", false);
+  let customersQuery = supabase.from("customers").select("*");
   if (storeId !== null) customersQuery = customersQuery.eq("store_id", storeId);
   const { data: customersData, error: customersError } = await customersQuery;
   if (customersError) throw customersError;
-  const customers = (customersData ?? []) as Customer[];
+  const customers = ((customersData ?? []) as Customer[]).filter((c) => !isJoinedStatus(c.status));
   if (customers.length === 0) return [];
 
   const { data: stepsData, error: stepsError } = await supabase
@@ -104,36 +106,21 @@ export async function getFollowUpStepsForCustomer(customer: Customer): Promise<C
   });
 }
 
-export interface StatusCounts {
-  検討: number;
-  事前キャンセル: number;
-  無断キャンセル: number;
-  rebooked: number;
-  joined: number;
-  total: number;
-}
+export type StatusCounts = Record<CustomerStatus, number> & { total: number };
 
 export async function getStatusCounts(storeId: number | null): Promise<StatusCounts> {
   const supabase = await createClient();
-  let query = supabase.from("customers").select("status, rebooked, joined");
+  let query = supabase.from("customers").select("status");
   if (storeId !== null) query = query.eq("store_id", storeId);
 
   const { data, error } = await query;
   if (error) throw error;
 
-  const rows = (data ?? []) as { status: CustomerStatus; rebooked: boolean; joined: boolean }[];
-  const counts: StatusCounts = {
-    検討: 0,
-    事前キャンセル: 0,
-    無断キャンセル: 0,
-    rebooked: 0,
-    joined: 0,
-    total: rows.length,
-  };
+  const rows = (data ?? []) as { status: CustomerStatus }[];
+  const counts = Object.fromEntries(CUSTOMER_STATUSES.map((s) => [s, 0])) as StatusCounts;
+  counts.total = rows.length;
   for (const row of rows) {
     counts[row.status]++;
-    if (row.rebooked) counts.rebooked++;
-    if (row.joined) counts.joined++;
   }
   return counts;
 }

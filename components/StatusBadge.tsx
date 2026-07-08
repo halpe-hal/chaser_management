@@ -1,7 +1,12 @@
 import type { CustomerStatus } from "@/lib/types";
 
 const STATUS_STYLES: Record<CustomerStatus, string> = {
+  未来店: "bg-sky-50 text-sky-700 border-sky-300",
+  "入会（２年）": "bg-emerald-50 text-emerald-700 border-emerald-300",
+  "入会（1年）": "bg-emerald-50 text-emerald-700 border-emerald-300",
+  "入会（通常）": "bg-emerald-50 text-emerald-700 border-emerald-300",
   検討: "bg-amber-50 text-amber-700 border-amber-300",
+  再予約済: "bg-teal-50 text-teal-700 border-teal-300",
   事前キャンセル: "bg-rose-50 text-rose-700 border-rose-300",
   無断キャンセル: "bg-gray-100 text-gray-600 border-gray-300",
 };
@@ -12,18 +17,6 @@ export function StatusBadge({ status }: { status: CustomerStatus }) {
       className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium border ${STATUS_STYLES[status]}`}
     >
       {status}
-    </span>
-  );
-}
-
-export function FlagBadge({ label, tone }: { label: string; tone: "mint" | "teal" }) {
-  const styles =
-    tone === "mint"
-      ? "bg-emerald-50 text-emerald-700 border-emerald-300"
-      : "bg-teal-50 text-teal-700 border-teal-300";
-  return (
-    <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium border ${styles}`}>
-      {label}
     </span>
   );
 }

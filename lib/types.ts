@@ -1,6 +1,29 @@
-export type CustomerStatus = "検討" | "事前キャンセル" | "無断キャンセル";
+export type CustomerStatus =
+  | "未来店"
+  | "入会（２年）"
+  | "入会（1年）"
+  | "入会（通常）"
+  | "検討"
+  | "再予約済"
+  | "事前キャンセル"
+  | "無断キャンセル";
 
-export const CUSTOMER_STATUSES: CustomerStatus[] = ["検討", "事前キャンセル", "無断キャンセル"];
+export const CUSTOMER_STATUSES: CustomerStatus[] = [
+  "未来店",
+  "入会（２年）",
+  "入会（1年）",
+  "入会（通常）",
+  "検討",
+  "再予約済",
+  "事前キャンセル",
+  "無断キャンセル",
+];
+
+export const JOINED_STATUSES: CustomerStatus[] = ["入会（２年）", "入会（1年）", "入会（通常）"];
+
+export function isJoinedStatus(status: CustomerStatus): boolean {
+  return (JOINED_STATUSES as string[]).includes(status);
+}
 
 export interface Customer {
   id: number;
@@ -11,8 +34,6 @@ export interface Customer {
   reservation_date: string;
   status: CustomerStatus;
   pre_cancel_date: string | null;
-  rebooked: boolean;
-  joined: boolean;
   created_by: string | null;
   created_at: string;
   updated_at: string;

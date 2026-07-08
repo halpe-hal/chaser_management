@@ -6,7 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 import type { CustomerStatus } from "@/lib/types";
 
 function readCustomerFields(formData: FormData) {
-  const status = String(formData.get("status") ?? "検討") as CustomerStatus;
+  const status = String(formData.get("status") ?? "未来店") as CustomerStatus;
   const preCancelDate = String(formData.get("pre_cancel_date") ?? "") || null;
 
   return {
@@ -90,35 +90,3 @@ export async function deleteCustomer(customerId: number): Promise<{ error?: stri
   redirect("/customers");
 }
 
-export async function setRebooked(customerId: number, value: boolean) {
-  const supabase = await createClient();
-  await supabase.from("customers").update({ rebooked: value }).eq("id", customerId);
-  revalidatePath(`/customers/${customerId}`);
-  revalidatePath("/customers");
-}
-
-export async function setJoined(customerId: number, value: boolean) {
-  const supabase = await createClient();
-  const { data: customer } = await supabase.from("customers").select("status").eq("id", customerId).single();
-  await supabase.from("customers").update({ joined: value }).eq("id", customerId);
-
-  if (value && customer) {
-    // 入会したら、そのステータスの追客ステップは残り全て完了扱いにする
-    const { data: steps } = await supabase.from("follow_up_scheme_steps").select("id").eq("status", customer.status);
-    if (steps && steps.length > 0) {
-      await supabase.from("follow_up_task_completions").upsert(
-        steps.map((s) => ({
-          customer_id: customerId,
-          scheme_step_id: s.id,
-          completed: true,
-          completed_at: new Date().toISOString(),
-        })),
-        { onConflict: "customer_id,scheme_step_id" }
-      );
-    }
-  }
-
-  revalidatePath(`/customers/${customerId}`);
-  revalidatePath("/customers");
-  revalidatePath("/");
-}

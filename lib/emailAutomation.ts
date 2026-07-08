@@ -3,6 +3,7 @@ import { sendFollowUpEmail } from "@/lib/mailer";
 import { todayStrTokyo, nowTimeStrTokyo, addIntervalToDateStr } from "@/lib/date";
 import {
   followUpBaseDate,
+  isJoinedStatus,
   renderEmailBody,
   renderEmailSubject,
   type Customer,
@@ -122,9 +123,8 @@ async function runForStore(
   const { data: customersData } = await supabase
     .from("customers")
     .select("*")
-    .eq("store_id", automation.store_id)
-    .eq("joined", false);
-  const customers = (customersData ?? []) as Customer[];
+    .eq("store_id", automation.store_id);
+  const customers = ((customersData ?? []) as Customer[]).filter((c) => !isJoinedStatus(c.status));
 
   if (customers.length > 0) {
     const { data: stepsData } = await supabase.from("follow_up_scheme_steps").select("*").eq("use_email", true);

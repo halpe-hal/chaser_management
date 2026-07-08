@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { StatusBadge, FlagBadge } from "@/components/StatusBadge";
+import { StatusBadge } from "@/components/StatusBadge";
 import type { Customer } from "@/lib/types";
 
 export function CustomerRow({ customer }: { customer: Customer }) {
@@ -26,12 +26,6 @@ export function CustomerRow({ customer }: { customer: Customer }) {
       <td className="px-4 py-3 text-gray-600">{customer.phone || "-"}</td>
       <td className="px-4 py-3">
         <StatusBadge status={customer.status} />
-      </td>
-      <td className="px-4 py-3">
-        <div className="flex gap-1.5">
-          {customer.rebooked && <FlagBadge label="再予約" tone="teal" />}
-          {customer.joined && <FlagBadge label="入会" tone="mint" />}
-        </div>
       </td>
     </tr>
   );
