@@ -14,9 +14,9 @@ export const CUSTOMER_STATUSES: CustomerStatus[] = [
   "入会（1年）",
   "入会（通常）",
   "検討",
-  "再予約済",
   "事前キャンセル",
   "無断キャンセル",
+  "再予約済",
 ];
 
 export const JOINED_STATUSES: CustomerStatus[] = ["入会（２年）", "入会（1年）", "入会（通常）"];
