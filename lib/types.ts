@@ -6,7 +6,9 @@ export type CustomerStatus =
   | "検討"
   | "再予約済"
   | "事前キャンセル"
-  | "無断キャンセル";
+  | "無断キャンセル"
+  | "見込みなし（来店済）"
+  | "見込みなし（未来店）";
 
 export const CUSTOMER_STATUSES: CustomerStatus[] = [
   "未来店",
@@ -17,6 +19,8 @@ export const CUSTOMER_STATUSES: CustomerStatus[] = [
   "事前キャンセル",
   "無断キャンセル",
   "再予約済",
+  "見込みなし（来店済）",
+  "見込みなし（未来店）",
 ];
 
 export const JOINED_STATUSES: CustomerStatus[] = ["入会（２年）", "入会（1年）", "入会（通常）"];
@@ -37,6 +41,7 @@ export interface Customer {
   slot_number: number | null;
   status: CustomerStatus;
   pre_cancel_date: string | null;
+  consideration_reason: string | null;
   staff_member_id: number | null;
   // ペアでご来店の同伴者を、別の顧客レコードとしてこの顧客に紐付ける場合の参照先ID
   paired_customer_id: number | null;

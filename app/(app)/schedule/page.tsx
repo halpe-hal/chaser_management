@@ -1,9 +1,11 @@
 import Link from "next/link";
 import { getValidatedStoreId } from "@/lib/stores";
 import { buildScheduleRows, getAllTimeSlots, getReservationsForDate, getScheduleCapacityForDate } from "@/lib/schedule";
+import { buildStatusCounts, computeDashboardStats } from "@/lib/customers";
 import { dayOfWeekForDateStr, todayStrTokyo } from "@/lib/date";
 import { ScheduleDateNav } from "@/components/ScheduleDateNav";
 import { ScheduleGrid } from "@/components/ScheduleGrid";
+import { ScheduleDayStats } from "@/components/ScheduleDayStats";
 
 export const dynamic = "force-dynamic";
 
@@ -30,11 +32,12 @@ export default async function SchedulePage({ searchParams }: { searchParams: Pro
     .map((c) => c.reservation_time)
     .filter((t): t is string => Boolean(t));
   const rows = buildScheduleRows(allSlots, dayOfWeekForDateStr(dateStr), reservationTimes);
+  const dayStats = computeDashboardStats(buildStatusCounts(reservations));
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between flex-wrap gap-3">
-        <h1 className="text-2xl font-bold text-gray-900">予約スケジュール</h1>
+        <h1 className="text-2xl font-bold text-gray-900">予約管理</h1>
         <Link
           href={`/customers/new?date=${dateStr}&store_id=${storeId}`}
           className="bg-brand text-white text-sm font-semibold px-4 py-2 rounded-lg hover:bg-brand-dark transition-colors"
@@ -44,6 +47,8 @@ export default async function SchedulePage({ searchParams }: { searchParams: Pro
       </div>
 
       <ScheduleDateNav date={dateStr} />
+
+      <ScheduleDayStats stats={dayStats} />
 
       <ScheduleGrid storeId={storeId} date={dateStr} rows={rows} capacity={capacity} reservations={reservations} />
     </div>

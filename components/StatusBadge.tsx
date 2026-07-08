@@ -6,9 +6,11 @@ const STATUS_STYLES: Record<CustomerStatus, string> = {
   "入会（1年）": "bg-emerald-50 text-emerald-700 border-emerald-300",
   "入会（通常）": "bg-emerald-50 text-emerald-700 border-emerald-300",
   検討: "bg-amber-50 text-amber-700 border-amber-300",
+  "見込みなし（来店済）": "bg-black text-white border-black",
   再予約済: "bg-teal-50 text-teal-700 border-teal-300",
   事前キャンセル: "bg-rose-50 text-rose-700 border-rose-300",
   無断キャンセル: "bg-gray-100 text-gray-600 border-gray-300",
+  "見込みなし（未来店）": "bg-black text-white border-black",
 };
 
 export function StatusBadge({ status }: { status: CustomerStatus }) {

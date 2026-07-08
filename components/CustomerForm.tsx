@@ -209,6 +209,19 @@ export function CustomerForm({
         </div>
       )}
 
+      {status === "検討" && (
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">検討理由</label>
+          <textarea
+            name="consideration_reason"
+            rows={3}
+            defaultValue={defaultValues?.consideration_reason ?? ""}
+            placeholder="例：料金面で悩んでいる、他店舗と比較中 など"
+            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+          />
+        </div>
+      )}
+
       <button
         type="submit"
         disabled={isPending}

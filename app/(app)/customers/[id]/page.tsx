@@ -1,6 +1,5 @@
 import { notFound } from "next/navigation";
 import { getCustomer, getCompanions, getContactLogs, getFollowUpStepsForCustomer } from "@/lib/customers";
-import { isAdminUser } from "@/lib/stores";
 import { getStaffMembers } from "@/lib/staff";
 import { updateCustomer } from "@/app/actions/customers";
 import { CustomerForm } from "@/components/CustomerForm";
@@ -18,10 +17,9 @@ export default async function CustomerDetailPage({ params }: { params: Promise<{
   const customer = await getCustomer(customerId);
   if (!customer) notFound();
 
-  const [logs, tasks, isAdmin, staff, companions, primary] = await Promise.all([
+  const [logs, tasks, staff, companions, primary] = await Promise.all([
     getContactLogs(customerId),
     getFollowUpStepsForCustomer(customer),
-    isAdminUser(),
     getStaffMembers(customer.store_id),
     customer.paired_customer_id ? Promise.resolve([]) : getCompanions(customerId),
     customer.paired_customer_id ? getCustomer(customer.paired_customer_id) : Promise.resolve(null),
@@ -33,7 +31,7 @@ export default async function CustomerDetailPage({ params }: { params: Promise<{
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-gray-900">{customer.name} さん</h1>
-        {isAdmin && <DeleteCustomerButton customerId={customer.id} customerName={customer.name} />}
+        <DeleteCustomerButton customerId={customer.id} customerName={customer.name} />
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">

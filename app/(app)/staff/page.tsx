@@ -1,19 +1,9 @@
-import { getAvailableStores, getValidatedStoreId, isAdminUser } from "@/lib/stores";
+import { getAvailableStores, getValidatedStoreId } from "@/lib/stores";
 import { getStaffMembers } from "@/lib/staff";
 import { StaffMemberRow } from "@/components/StaffMemberRow";
 import { StaffMemberAddForm } from "@/components/StaffMemberAddForm";
 
 export default async function StaffPage() {
-  const isAdmin = await isAdminUser();
-
-  if (!isAdmin) {
-    return (
-      <div className="bg-white rounded-2xl shadow-sm border border-black/5 p-6">
-        <p className="text-sm text-gray-500">このページは管理者のみ閲覧できます。</p>
-      </div>
-    );
-  }
-
   const storeId = await getValidatedStoreId();
   const stores = await getAvailableStores();
   const storeName = stores.find((s) => s.id === storeId)?.name ?? "";

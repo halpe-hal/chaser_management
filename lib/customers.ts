@@ -119,10 +119,15 @@ export async function getStatusCounts(storeId: number | null): Promise<StatusCou
   if (error) throw error;
 
   const rows = (data ?? []) as { status: CustomerStatus }[];
+  return buildStatusCounts(rows);
+}
+
+// 手元にある顧客一覧（例: 特定日の予約分）から、DBに問い合わせ直さずにステータス件数を集計する
+export function buildStatusCounts(customers: Pick<Customer, "status">[]): StatusCounts {
   const counts = Object.fromEntries(CUSTOMER_STATUSES.map((s) => [s, 0])) as StatusCounts;
-  counts.total = rows.length;
-  for (const row of rows) {
-    counts[row.status]++;
+  counts.total = customers.length;
+  for (const c of customers) {
+    counts[c.status]++;
   }
   return counts;
 }
@@ -131,21 +136,28 @@ export interface DashboardStats {
   totalReservations: number;
   visitRate: number | null; // 0-100（対象0件のときは null）
   joinRate: number | null; // 0-100（対象0件のときは null）
+  rebookRate: number | null; // 0-100（対象0件のときは null）
 }
 
 // 来店率は「未来店」（まだ来店予定日を迎えていない）と「再予約済」（結果が別の予約に持ち越し）を
 // 母数から除いた、結果が確定している予約に対する割合として算出する。
-// 入会率は、さらに事前キャンセル・無断キャンセルも母数から除いた（＝実際に来店した人数に対する）割合とする。
+// 「見込みなし（未来店）」は事前キャンセル・無断キャンセルと同じ「来店しなかった」側として扱う。
+// 入会率は、さらに来店しなかった側も母数から除いた（＝実際に来店した人数に対する）割合とする。
+// 再予約率は、来店に至らなかった予約（事前キャンセル・無断キャンセル・見込みなし（未来店）・再予約済）のうち、再予約済の割合とする。
 export function computeDashboardStats(counts: StatusCounts): DashboardStats {
   const joined = JOINED_STATUSES.reduce((sum, s) => sum + counts[s], 0);
   const notUpcoming = counts.total - counts["未来店"];
   const visitDenominator = notUpcoming - counts["再予約済"];
-  const visited = visitDenominator - counts["事前キャンセル"] - counts["無断キャンセル"];
+  const didNotVisit = counts["事前キャンセル"] + counts["無断キャンセル"] + counts["見込みなし（未来店）"];
+  const visited = visitDenominator - didNotVisit;
+
+  const rebookDenominator = didNotVisit + counts["再予約済"];
 
   return {
     totalReservations: counts.total,
     visitRate: visitDenominator > 0 ? (visited / visitDenominator) * 100 : null,
     joinRate: visited > 0 ? (joined / visited) * 100 : null,
+    rebookRate: rebookDenominator > 0 ? (counts["再予約済"] / rebookDenominator) * 100 : null,
   };
 }
 

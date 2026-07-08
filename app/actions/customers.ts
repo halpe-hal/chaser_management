@@ -9,6 +9,7 @@ import type { CustomerStatus } from "@/lib/types";
 function readCustomerFields(formData: FormData) {
   const status = String(formData.get("status") ?? "未来店") as CustomerStatus;
   const preCancelDate = String(formData.get("pre_cancel_date") ?? "") || null;
+  const considerationReason = String(formData.get("consideration_reason") ?? "").trim() || null;
   const staffMemberIdRaw = String(formData.get("staff_member_id") ?? "");
   const reservationTime = String(formData.get("reservation_time") ?? "") || null;
   const reservationEndTime = String(formData.get("reservation_end_time") ?? "") || null;
@@ -22,6 +23,7 @@ function readCustomerFields(formData: FormData) {
     reservation_end_time: reservationTime ? reservationEndTime : null,
     status,
     pre_cancel_date: status === "事前キャンセル" ? preCancelDate : null,
+    consideration_reason: status === "検討" ? considerationReason : null,
     staff_member_id: staffMemberIdRaw ? Number(staffMemberIdRaw) : null,
   };
 }

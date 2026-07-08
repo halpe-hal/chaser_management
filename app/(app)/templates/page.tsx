@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import { getAvailableStores, getValidatedStoreId, isAdminUser } from "@/lib/stores";
+import { getAvailableStores, getValidatedStoreId } from "@/lib/stores";
 import {
   CUSTOMER_STATUSES,
   type CustomerStatus,
@@ -11,7 +11,7 @@ import {
 import { TemplateEditor } from "@/components/TemplateEditor";
 import { StatusFilterSelect } from "@/components/StatusFilterSelect";
 import { EmailSignatureEditor } from "@/components/EmailSignatureEditor";
-import { EmailAutomationSettings, EmailAutomationStatus } from "@/components/EmailAutomationSettings";
+import { EmailAutomationSettings } from "@/components/EmailAutomationSettings";
 
 // ステータス切り替え直後に古い内容が表示され続けることがないよう、キャッシュを使わせない
 export const dynamic = "force-dynamic";
@@ -29,7 +29,6 @@ export default async function TemplatesPage({
   const storeId = await getValidatedStoreId();
   const stores = await getAvailableStores();
   const storeName = stores.find((s) => s.id === storeId)?.name ?? "";
-  const isAdmin = await isAdminUser();
 
   const supabase = await createClient();
 
@@ -78,7 +77,7 @@ export default async function TemplatesPage({
         <StatusFilterSelect value={status} />
       </div>
 
-      {storeId !== null && (isAdmin ? <EmailAutomationSettings storeId={storeId} automation={automation} /> : <EmailAutomationStatus automation={automation} />)}
+      {storeId !== null && <EmailAutomationSettings storeId={storeId} automation={automation} />}
 
       {storeId !== null && <EmailSignatureEditor storeId={storeId} signature={signature} />}
 

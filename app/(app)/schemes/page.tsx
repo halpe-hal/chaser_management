@@ -1,20 +1,9 @@
 import { createClient } from "@/lib/supabase/server";
-import { isAdminUser } from "@/lib/stores";
 import { CUSTOMER_STATUSES, type FollowUpSchemeStep } from "@/lib/types";
 import { SchemeStepRow } from "@/components/SchemeStepRow";
 import { SchemeStepAddForm } from "@/components/SchemeStepAddForm";
 
 export default async function SchemesPage() {
-  const isAdmin = await isAdminUser();
-
-  if (!isAdmin) {
-    return (
-      <div className="bg-white rounded-2xl shadow-sm border border-black/5 p-6">
-        <p className="text-sm text-gray-500">このページは管理者のみ閲覧できます。</p>
-      </div>
-    );
-  }
-
   const supabase = await createClient();
   const { data } = await supabase
     .from("follow_up_scheme_steps")

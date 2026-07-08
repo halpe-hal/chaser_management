@@ -75,16 +75,3 @@ export function EmailAutomationSettings({
     </div>
   );
 }
-
-export function EmailAutomationStatus({ automation }: { automation: StoreEmailAutomation | null }) {
-  return (
-    <div className="bg-white rounded-2xl shadow-sm border border-black/5 p-4 text-sm text-gray-600">
-      メール自動送信：
-      {automation?.enabled ? (
-        <span className="text-emerald-700 font-medium"> 有効（{automation.send_time.slice(0, 5)}）</span>
-      ) : (
-        <span className="text-gray-400 font-medium"> 無効</span>
-      )}
-    </div>
-  );
-}
