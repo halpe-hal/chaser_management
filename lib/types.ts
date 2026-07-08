@@ -126,13 +126,17 @@ export interface FollowUpSchemeStep {
   updated_at: string;
 }
 
-// 全ステータス共通のグローバル設定（追客ステップの起算日リセット日など）
+// 全ステータス共通のグローバル設定（グランドオープン日など）
 export interface FollowUpGlobalSettings {
   id: number;
-  // 設定した場合、この日を過ぎるとご予約日がこの日より前の顧客は、追客ステップの起算日がこの日にリセットされる
+  // 設定した場合、この日を過ぎるとご予約日がこの日より前の顧客は、追客ステップの起算日がこの日にリセットされる。
+  // また「プレオープン期間」のステップは、この日を過ぎると自動的に使われなくなる（active_untilとして利用）。
   base_date_reset_date: string | null;
   updated_at: string;
 }
+
+// ステップメール管理の画面切り替え（プレオープン期間中のステップ / グランドオープン以降の通常ステップ）
+export type StepEmailPhase = "pre" | "post";
 
 export interface FollowUpTaskCompletion {
   id: number;

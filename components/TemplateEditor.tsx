@@ -17,16 +17,22 @@ export function TemplateEditor({ step, template }: { step: FollowUpSchemeStep; t
 
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-black/5 p-6">
-      <h3 className="text-base font-semibold text-gray-900 mb-4">
-        {step.label}
-        <span className="ml-2 text-xs font-normal text-gray-500">（{channelLabel}）</span>
+      <div className="flex flex-wrap items-center gap-2 mb-4">
+        <h3 className="text-base font-semibold text-gray-900">{step.label}</h3>
+        <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium border bg-gray-100 text-gray-600 border-gray-300">
+          {channelLabel}
+        </span>
         {step.active_until && (
-          <span className="ml-2 text-xs font-normal text-brand">期間限定（〜{step.active_until}）</span>
+          <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium border bg-brand/10 text-brand-dark border-brand/30">
+            プレオープン期間限定（〜{step.active_until}）
+          </span>
         )}
         {step.fixed_date && (
-          <span className="ml-2 text-xs font-normal text-brand">固定日（{step.fixed_date}）</span>
+          <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium border bg-brand/10 text-brand-dark border-brand/30">
+            固定日：{step.fixed_date}
+          </span>
         )}
-      </h3>
+      </div>
       <form action={formAction} className="space-y-4">
         {state?.error && <p className="text-sm text-red-600">{state.error}</p>}
         {state?.success && <p className="text-sm text-emerald-700">保存しました。</p>}

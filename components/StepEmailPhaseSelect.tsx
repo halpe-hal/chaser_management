@@ -1,15 +1,20 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
-import type { CustomerStatus } from "@/lib/types";
+import type { StepEmailPhase } from "@/lib/types";
 
-export function StepEmailStatusSelect({ value, options }: { value: CustomerStatus; options: CustomerStatus[] }) {
+const PHASE_LABELS: Record<StepEmailPhase, string> = {
+  pre: "プレオープン期間",
+  post: "グランドオープン以降",
+};
+
+export function StepEmailPhaseSelect({ value }: { value: StepEmailPhase }) {
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  function handleChange(newStatus: string) {
+  function handleChange(newPhase: string) {
     const params = new URLSearchParams(searchParams.toString());
-    params.set("status", newStatus);
+    params.set("phase", newPhase);
     router.push(`/step-emails?${params.toString()}`);
   }
 
@@ -19,9 +24,9 @@ export function StepEmailStatusSelect({ value, options }: { value: CustomerStatu
       onChange={(e) => handleChange(e.target.value)}
       className="border border-gray-300 rounded-lg px-3 py-2 text-sm"
     >
-      {options.map((s) => (
-        <option key={s} value={s}>
-          {s}
+      {(Object.keys(PHASE_LABELS) as StepEmailPhase[]).map((phase) => (
+        <option key={phase} value={phase}>
+          {PHASE_LABELS[phase]}
         </option>
       ))}
     </select>

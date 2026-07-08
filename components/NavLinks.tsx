@@ -12,6 +12,7 @@ const NAV_ITEMS = [
 
 const SETTINGS_ITEMS = [
   { label: "ステップメール管理", href: "/step-emails" },
+  { label: "一斉メール送信", href: "/mass-email" },
   { label: "予約枠設定", href: "/schedule-settings" },
   { label: "スタッフ設定", href: "/staff" },
 ];

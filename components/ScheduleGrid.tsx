@@ -68,7 +68,7 @@ export function ScheduleGrid({
             </tr>
           )}
           {rows.map((row, rowIndex) => (
-            <tr key={row.time} className={`border-b border-gray-100 ${row.isOpen ? "" : "bg-gray-100"}`}>
+            <tr key={row.time} className={`border-b border-gray-300 ${row.isOpen ? "" : "bg-gray-100"}`}>
               <td className="px-4 py-3 font-medium text-gray-700 whitespace-nowrap">{row.time}</td>
               {slotColumns.map((slot) => {
                 // 直前の行から始まった予約のrowSpanでこのセルはすでにカバーされている

@@ -4,7 +4,14 @@ import { useActionState, useEffect, useState } from "react";
 import type { CustomerStatus } from "@/lib/types";
 import { createSchemeStep } from "@/app/actions/followUpSchemes";
 
-export function SchemeStepAddForm({ status }: { status: CustomerStatus }) {
+export function SchemeStepAddForm({
+  status,
+  activeUntil,
+}: {
+  status: CustomerStatus;
+  // プレオープン期間の画面ならグランドオープン日、グランドオープン以降の画面ならnull（このステップに自動で設定される）
+  activeUntil: string | null;
+}) {
   const [state, formAction, isPending] = useActionState(createSchemeStep, null);
   const [resetKey, setResetKey] = useState(0);
 
@@ -15,29 +22,26 @@ export function SchemeStepAddForm({ status }: { status: CustomerStatus }) {
   return (
     <form key={resetKey} action={formAction} className="flex flex-wrap items-end gap-3 border border-dashed border-gray-300 rounded-xl p-3">
       <input type="hidden" name="status" value={status} />
+      <input type="hidden" name="active_until" value={activeUntil ?? ""} />
       {state?.error && <p className="w-full text-sm text-red-600">{state.error}</p>}
       <div>
-        <label className="block text-xs text-gray-500 mb-1">ラベル</label>
+        <label className="block text-xs text-gray-600 mb-1">ラベル</label>
         <input type="text" name="label" required placeholder="例：2ヶ月後" className="w-32 border border-gray-300 rounded-lg px-3 py-2 text-sm" />
       </div>
       <div>
-        <label className="block text-xs text-gray-500 mb-1">経過</label>
+        <label className="block text-xs text-gray-600 mb-1">経過</label>
         <input type="number" name="value" min={0} placeholder="2" className="w-20 border border-gray-300 rounded-lg px-3 py-2 text-sm" />
       </div>
       <div>
-        <label className="block text-xs text-gray-500 mb-1">単位</label>
+        <label className="block text-xs text-gray-600 mb-1">単位</label>
         <select name="unit" defaultValue="day" className="border border-gray-300 rounded-lg px-3 py-2 text-sm">
           <option value="day">日後</option>
           <option value="month">ヶ月後（同じ日）</option>
         </select>
       </div>
       <div>
-        <label className="block text-xs text-gray-500 mb-1">固定日（任意・指定時は経過日数より優先）</label>
+        <label className="block text-xs text-gray-600 mb-1">固定日（任意・指定時は経過日数より優先）</label>
         <input type="date" name="fixed_date" className="border border-gray-300 rounded-lg px-3 py-2 text-sm" />
-      </div>
-      <div>
-        <label className="block text-xs text-gray-500 mb-1">有効期限（任意）</label>
-        <input type="date" name="active_until" className="border border-gray-300 rounded-lg px-3 py-2 text-sm" />
       </div>
       <label className="flex items-center gap-1.5 text-sm text-gray-700 pb-2">
         <input type="checkbox" name="use_phone" className="w-4 h-4 rounded border-gray-300 text-brand focus:ring-brand" />

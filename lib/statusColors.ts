@@ -14,3 +14,17 @@ export const STATUS_CARD_STYLES: Record<CustomerStatus, string> = {
   "見込みなし（未来店）": "bg-black text-white",
   再予約済: "bg-teal-200 text-teal-900",
 };
+
+// ダッシュボードのステータス件数カード用のアクセントカラー（同系色・白カード＋左バーの控えめな配色）
+export const STATUS_ACCENT_COLORS: Record<CustomerStatus, string> = {
+  未来店: "bg-gray-300",
+  "入会（２年）": "bg-orange-400",
+  "入会（1年）": "bg-purple-400",
+  "入会（通常）": "bg-sky-500",
+  検討: "bg-gray-500",
+  事前キャンセル: "bg-violet-500",
+  無断キャンセル: "bg-red-600",
+  "見込みなし（来店済）": "bg-gray-900",
+  "見込みなし（未来店）": "bg-gray-900",
+  再予約済: "bg-teal-500",
+};
