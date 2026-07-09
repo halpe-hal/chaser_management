@@ -1,6 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
-import { todayStrTokyo, addIntervalToDateStr } from "@/lib/date";
+import { todayStrTokyo, nowTimeStrTokyo, addIntervalToDateStr } from "@/lib/date";
 import {
   followUpBaseDate,
   isJoinedStatus,
@@ -54,6 +54,59 @@ export function resolveFollowUpBaseDate(
 
 export function computeDueDate(step: FollowUpSchemeStep, base: string): string {
   return step.fixed_date ?? addIntervalToDateStr(base, step.days_after, step.months_after);
+}
+
+// 固定日ステップの送信タイミング（その店舗の自動送信時刻）を、今日・現在時刻がすでに過ぎているか判定する。
+// 過ぎていれば「今から登録してもそのステップは届かない」ということなので、後から遅れて送るのではなく
+// 対応不要（チェック済み）として扱う。
+export function isFixedDateStepMissed(fixedDate: string, sendTimeHHMM: string, today: string, nowTime: string): boolean {
+  if (today > fixedDate) return true;
+  if (today === fixedDate && nowTime >= sendTimeHHMM) return true;
+  return false;
+}
+
+// ステータス変更・新規登録の直後に呼ぶ。変更後のステータスに紐づく固定日ステップのうち、
+// 送信タイミングをすでに過ぎているものを「対応完了（チェック済み・メール未送信）」として記録し、
+// 自動送信バッチやアラート一覧に出てこないようにする。
+export async function autoSkipPassedFixedDateSteps(
+  supabase: SupabaseClient,
+  storeId: number,
+  customerId: number,
+  status: CustomerStatus
+): Promise<void> {
+  if (isJoinedStatus(status)) return;
+
+  const { data: automation } = await supabase
+    .from("store_email_automation")
+    .select("send_time")
+    .eq("store_id", storeId)
+    .maybeSingle();
+  const sendTime = (automation as { send_time: string } | null)?.send_time;
+  if (!sendTime) return;
+  const sendTimeHHMM = sendTime.slice(0, 5);
+
+  const { data: stepsData } = await supabase
+    .from("follow_up_scheme_steps")
+    .select("*")
+    .eq("status", status)
+    .not("fixed_date", "is", null);
+  const today = todayStr();
+  const steps = selectEffectiveSteps((stepsData ?? []) as FollowUpSchemeStep[], today);
+  const nowTime = nowTimeStrTokyo();
+
+  const missedSteps = steps.filter((step) => step.fixed_date && isFixedDateStepMissed(step.fixed_date, sendTimeHHMM, today, nowTime));
+  if (missedSteps.length === 0) return;
+
+  const nowIso = new Date().toISOString();
+  await supabase.from("follow_up_task_completions").upsert(
+    missedSteps.map((step) => ({
+      customer_id: customerId,
+      scheme_step_id: step.id,
+      completed: true,
+      completed_at: nowIso,
+    })),
+    { onConflict: "customer_id,scheme_step_id" }
+  );
 }
 
 export interface DueTask {

@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { assignSlotNumber, getScheduleCapacityForDate } from "@/lib/schedule";
+import { autoSkipPassedFixedDateSteps } from "@/lib/customers";
 import type { CustomerStatus } from "@/lib/types";
 
 function readCustomerFields(formData: FormData) {
@@ -68,6 +69,8 @@ export async function createCustomer(_prevState: unknown, formData: FormData) {
     return { error: "登録に失敗しました：" + error.message };
   }
 
+  await autoSkipPassedFixedDateSteps(supabase, storeId, data.id, fields.status);
+
   revalidatePath("/customers");
   revalidatePath("/schedule");
   revalidatePath("/");
@@ -87,7 +90,7 @@ export async function updateCustomer(customerId: number, _prevState: unknown, fo
 
   const { data: current } = await supabase
     .from("customers")
-    .select("store_id, reservation_date, reservation_time, slot_number, paired_customer_id")
+    .select("store_id, status, reservation_date, reservation_time, slot_number, paired_customer_id")
     .eq("id", customerId)
     .single();
 
@@ -123,6 +126,10 @@ export async function updateCustomer(customerId: number, _prevState: unknown, fo
 
   if (error) {
     return { error: "更新に失敗しました：" + error.message };
+  }
+
+  if (current && current.status !== fields.status) {
+    await autoSkipPassedFixedDateSteps(supabase, current.store_id, customerId, fields.status);
   }
 
   revalidatePath(`/customers/${customerId}`);
