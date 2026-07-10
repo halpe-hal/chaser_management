@@ -5,11 +5,15 @@ import { assignSlotNumber, getScheduleCapacityForDate } from "@/lib/schedule";
 import { detectPartySizeFromText, withPartySizeSuffix } from "@/lib/partySize";
 import { findRebookMatches } from "@/lib/customers";
 
-// Zapierからの都度呼び出しなので、キャッシュを使わせず必ず生きた状態で実行する
+// 外部の自動化ツール（Google Apps Script）からの都度呼び出しなので、キャッシュを使わせず必ず生きた状態で実行する
 export const dynamic = "force-dynamic";
 
 // このいずれかの文言が本文（どのフィールドでもよい）に含まれているメールだけを取り込む
 const TARGET_COURSE_KEYWORDS = ["無料見学予約", "無料体験予約"];
+
+// 来店確認のリマインダーメール（新規予約ではなく、予約情報を再掲しているだけ）はこの文言を含む。
+// TARGET_COURSE_KEYWORDSにもマッチしてしまうため、先にこちらで除外する。
+const REMINDER_EMAIL_KEYWORDS = ["ご予約日が近くなりました"];
 
 function pick(body: Record<string, unknown>, keys: string[]): string {
   for (const key of keys) {
@@ -19,11 +23,18 @@ function pick(body: Record<string, unknown>, keys: string[]): string {
   return "";
 }
 
-function matchesTargetCourse(body: Record<string, unknown>): boolean {
-  const allText = Object.values(body)
+function bodyText(body: Record<string, unknown>): string {
+  return Object.values(body)
     .filter((v): v is string => typeof v === "string")
     .join("\n");
-  return TARGET_COURSE_KEYWORDS.some((kw) => allText.includes(kw));
+}
+
+function matchesTargetCourse(body: Record<string, unknown>): boolean {
+  return TARGET_COURSE_KEYWORDS.some((kw) => bodyText(body).includes(kw));
+}
+
+function isReminderEmail(body: Record<string, unknown>): boolean {
+  return REMINDER_EMAIL_KEYWORDS.some((kw) => bodyText(body).includes(kw));
 }
 
 function toDateStr(value: string): string | null {
@@ -64,12 +75,17 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "invalid JSON body" }, { status: 400 });
   }
 
+  // 来店確認のリマインダーメールは新規予約ではないので取り込まない
+  if (isReminderEmail(body)) {
+    return NextResponse.json({ skipped: true, reason: "reminder email" });
+  }
+
   // 「無料見学予約」「無料体験予約」の文言が見当たらないメールは対象外として無視する
   if (!matchesTargetCourse(body)) {
     return NextResponse.json({ skipped: true, reason: "target course keyword not found" });
   }
 
-  // Zapier側でどんなフィールド名を付けても拾えるよう、日本語・英語どちらの表記も許容する
+  // 呼び出し元でどんなフィールド名を付けても拾えるよう、日本語・英語どちらの表記も許容する
   const rawName = pick(body, ["name", "お名前", "名前"]);
   const partySizeField = pick(body, ["人数", "参加人数", "ご来店人数", "来店人数", "count", "people"]);
   const allBodyText = Object.values(body)
