@@ -46,6 +46,10 @@ export interface Customer {
   pre_cancel_date: string | null;
   consideration_reason: string | null;
   staff_member_id: number | null;
+  // 再予約率の集計用：一度でも事前キャンセル/無断キャンセルになった日時、一度でも再予約済になった日時
+  // （その後ステータスが入会等に進んでも消えない。前段ステータスへ戻された＝訂正とみなした場合のみnullに戻す）
+  ever_cancelled_at: string | null;
+  ever_rebooked_at: string | null;
   // ペアでご来店の同伴者を、別の顧客レコードとしてこの顧客に紐付ける場合の参照先ID
   paired_customer_id: number | null;
   created_by: string | null;

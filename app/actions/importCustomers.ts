@@ -116,6 +116,7 @@ export async function importCustomersCsv(
         slot_number: p.slotNumber,
         status: "再予約済",
         pre_cancel_date: null,
+        ever_rebooked_at: new Date().toISOString(),
       })
       .eq("id", p.rebookTargetId!);
   }
@@ -123,7 +124,10 @@ export async function importCustomersCsv(
   // 同じ連絡先で複数の既存顧客がマッチしてしまった場合、移動対象以外は再予約済にするだけにとどめる
   const extraRebookIds = Array.from(new Set(plan.flatMap((p) => p.extraRebookIds)));
   if (extraRebookIds.length > 0) {
-    await supabase.from("customers").update({ status: "再予約済" }).in("id", extraRebookIds);
+    await supabase
+      .from("customers")
+      .update({ status: "再予約済", ever_rebooked_at: new Date().toISOString() })
+      .in("id", extraRebookIds);
   }
 
   revalidatePath("/customers");

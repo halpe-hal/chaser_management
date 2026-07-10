@@ -163,6 +163,40 @@ export async function getDueFollowUpTasks(storeId: number | null): Promise<DueTa
   return result;
 }
 
+const CANCEL_STATUSES: readonly CustomerStatus[] = ["事前キャンセル", "無断キャンセル"];
+// 事前キャンセル/無断キャンセルより前の段階。ここへ戻された場合は「間違えてキャンセルにしてしまった」の訂正とみなす
+const BEFORE_CANCEL_STATUSES: readonly CustomerStatus[] = ["未来店", "検討"];
+// 再予約済より前の段階。ここへ戻された場合は「間違えて再予約済にしてしまった」の訂正とみなす
+const BEFORE_REBOOK_STATUSES: readonly CustomerStatus[] = ["未来店", "検討", "事前キャンセル", "無断キャンセル", "見込みなし（未来店）"];
+
+export interface RebookFlagUpdates {
+  ever_cancelled_at?: string | null;
+  ever_rebooked_at?: string | null;
+}
+
+// ステータス変更のたびに呼ぶ。再予約率を「今のステータス分布」ではなく「一度でも事前キャンセル/無断キャンセルに
+// なった人のうち、一度でも再予約済になれた人の割合」として安定して集計できるよう、変化のあった分だけ返す。
+// 前段ステータスへ戻された場合はステータス訂正とみなしてフラグを解除する（誤操作の巻き戻し救済）。
+export function computeRebookFlagUpdates(oldStatus: CustomerStatus, newStatus: CustomerStatus): RebookFlagUpdates {
+  if (oldStatus === newStatus) return {};
+  const now = new Date().toISOString();
+  const updates: RebookFlagUpdates = {};
+
+  if (CANCEL_STATUSES.includes(newStatus)) {
+    updates.ever_cancelled_at = now;
+  } else if (CANCEL_STATUSES.includes(oldStatus) && BEFORE_CANCEL_STATUSES.includes(newStatus)) {
+    updates.ever_cancelled_at = null;
+  }
+
+  if (newStatus === "再予約済") {
+    updates.ever_rebooked_at = now;
+  } else if (oldStatus === "再予約済" && BEFORE_REBOOK_STATUSES.includes(newStatus)) {
+    updates.ever_rebooked_at = null;
+  }
+
+  return updates;
+}
+
 export interface CustomerStepStatus {
   step: FollowUpSchemeStep;
   due_date: string;
@@ -205,7 +239,11 @@ export async function getFollowUpStepsForCustomer(customer: Customer): Promise<C
   });
 }
 
-export type StatusCounts = Record<CustomerStatus, number> & { total: number };
+export type StatusCounts = Record<CustomerStatus, number> & {
+  total: number;
+  everCancelled: number; // 一度でも事前キャンセル/無断キャンセルになった人数（再予約率の分母）
+  everCancelledAndRebooked: number; // そのうち一度でも再予約済になれた人数（再予約率の分子）
+};
 
 export interface StatusCountsFilters {
   dateFrom?: string;
@@ -214,7 +252,7 @@ export interface StatusCountsFilters {
 
 export async function getStatusCounts(storeId: number | null, filters: StatusCountsFilters = {}): Promise<StatusCounts> {
   const supabase = await createClient();
-  let query = supabase.from("customers").select("status");
+  let query = supabase.from("customers").select("status, ever_cancelled_at, ever_rebooked_at");
   if (storeId !== null) query = query.eq("store_id", storeId);
   if (filters.dateFrom) query = query.gte("reservation_date", filters.dateFrom);
   if (filters.dateTo) query = query.lte("reservation_date", filters.dateTo);
@@ -222,15 +260,23 @@ export async function getStatusCounts(storeId: number | null, filters: StatusCou
   const { data, error } = await query;
   if (error) throw error;
 
-  const rows = (data ?? []) as { status: CustomerStatus }[];
+  const rows = (data ?? []) as Pick<Customer, "status" | "ever_cancelled_at" | "ever_rebooked_at">[];
   return buildStatusCounts(rows);
 }
 
 // 手元にある顧客一覧（例: 特定日の予約分）から、DBに問い合わせ直さずにステータス件数を集計する
-export function buildStatusCounts(customers: Pick<Customer, "status">[]): StatusCounts {
+export function buildStatusCounts(
+  customers: (Pick<Customer, "status"> & Partial<Pick<Customer, "ever_cancelled_at" | "ever_rebooked_at">>)[]
+): StatusCounts {
   const counts = Object.fromEntries(CUSTOMER_STATUSES.map((s) => [s, 0])) as StatusCounts;
   counts.total = customers.length;
+  counts.everCancelled = 0;
+  counts.everCancelledAndRebooked = 0;
   for (const c of customers) {
+    if (c.ever_cancelled_at) {
+      counts.everCancelled++;
+      if (c.ever_rebooked_at) counts.everCancelledAndRebooked++;
+    }
     counts[c.status]++;
   }
   return counts;
@@ -307,7 +353,9 @@ export interface DashboardStats {
 // 母数から除いた、結果が確定している予約に対する割合として算出する。
 // 「見込みなし（未来店）」は事前キャンセル・無断キャンセルと同じ「来店しなかった」側として扱う。
 // 入会率は、さらに来店しなかった側も母数から除いた（＝実際に来店した人数に対する）割合とする。
-// 再予約率は、来店に至らなかった予約（事前キャンセル・無断キャンセル・見込みなし（未来店）・再予約済）のうち、再予約済の割合とする。
+// 再予約率は、現在のステータス分布ではなく ever_cancelled_at/ever_rebooked_at フラグで算出する。
+// 一度でも事前キャンセル/無断キャンセルになった人のうち、一度でも再予約済になれた人の割合。
+// こうすることで、その後ステータスが入会・見込みなし等に進んでも率が変動しない（computeRebookFlagUpdates参照）。
 // 来店した人数（検討＋入会全プラン＋見込みなし（来店済））と、そのうち入会した人数を求める
 function countVisitedAndJoined(counts: StatusCounts): { visited: number; joined: number } {
   const joined = JOINED_STATUSES.reduce((sum, s) => sum + counts[s], 0);
@@ -320,10 +368,7 @@ function countVisitedAndJoined(counts: StatusCounts): { visited: number; joined:
 export function computeDashboardStats(counts: StatusCounts): DashboardStats {
   const notUpcoming = counts.total - counts["未来店"];
   const visitDenominator = notUpcoming - counts["再予約済"];
-  const didNotVisit = counts["事前キャンセル"] + counts["無断キャンセル"] + counts["見込みなし（未来店）"];
   const { visited, joined } = countVisitedAndJoined(counts);
-
-  const rebookDenominator = didNotVisit + counts["再予約済"];
 
   return {
     totalReservations: counts.total,
@@ -331,7 +376,7 @@ export function computeDashboardStats(counts: StatusCounts): DashboardStats {
     memberCount: joined,
     visitRate: visitDenominator > 0 ? (visited / visitDenominator) * 100 : null,
     joinRate: visited > 0 ? (joined / visited) * 100 : null,
-    rebookRate: rebookDenominator > 0 ? (counts["再予約済"] / rebookDenominator) * 100 : null,
+    rebookRate: counts.everCancelled > 0 ? (counts.everCancelledAndRebooked / counts.everCancelled) * 100 : null,
   };
 }
 

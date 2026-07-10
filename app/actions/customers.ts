@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { assignSlotNumber, getScheduleCapacityForDate } from "@/lib/schedule";
-import { autoSkipPassedFixedDateSteps } from "@/lib/customers";
+import { autoSkipPassedFixedDateSteps, computeRebookFlagUpdates } from "@/lib/customers";
 import type { CustomerStatus } from "@/lib/types";
 
 function readCustomerFields(formData: FormData) {
@@ -54,11 +54,15 @@ export async function createCustomer(_prevState: unknown, formData: FormData) {
     }
   }
 
+  // 新規登録時点のステータスがすでに事前キャンセル/無断キャンセル/再予約済であるケース（稀だが起こりうる）に対応
+  const flagUpdates = computeRebookFlagUpdates("未来店", fields.status);
+
   const { data, error } = await supabase
     .from("customers")
     .insert({
       store_id: storeId,
       ...fields,
+      ...flagUpdates,
       slot_number: slotNumber,
       created_by: user?.id ?? null,
     })
@@ -119,16 +123,19 @@ export async function updateCustomer(customerId: number, _prevState: unknown, fo
     slotNumber = null;
   }
 
+  const statusChanged = current !== null && current.status !== fields.status;
+  const flagUpdates = statusChanged ? computeRebookFlagUpdates(current.status, fields.status) : {};
+
   const { error } = await supabase
     .from("customers")
-    .update({ ...fields, slot_number: slotNumber })
+    .update({ ...fields, ...flagUpdates, slot_number: slotNumber })
     .eq("id", customerId);
 
   if (error) {
     return { error: "更新に失敗しました：" + error.message };
   }
 
-  if (current && current.status !== fields.status) {
+  if (statusChanged) {
     await autoSkipPassedFixedDateSteps(supabase, current.store_id, customerId, fields.status);
   }
 

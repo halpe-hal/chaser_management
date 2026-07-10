@@ -149,7 +149,7 @@ export async function POST(request: Request) {
   if (extraMatches.length > 0) {
     await supabase
       .from("customers")
-      .update({ status: "再予約済" })
+      .update({ status: "再予約済", ever_rebooked_at: new Date().toISOString() })
       .in("id", extraMatches.map((m) => m.id));
   }
 
@@ -166,6 +166,7 @@ export async function POST(request: Request) {
         slot_number: slotNumber,
         status: "再予約済",
         pre_cancel_date: null,
+        ever_rebooked_at: new Date().toISOString(),
       })
       .eq("id", primaryMatch.id);
 
