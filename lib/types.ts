@@ -50,6 +50,8 @@ export interface Customer {
   // （その後ステータスが入会等に進んでも消えない。前段ステータスへ戻された＝訂正とみなした場合のみnullに戻す）
   ever_cancelled_at: string | null;
   ever_rebooked_at: string | null;
+  // 予約管理画面でカードから「来店中にする」を押した日時。これが入るまでカードは白背景で表示する
+  checked_in_at: string | null;
   // ペアでご来店の同伴者を、別の顧客レコードとしてこの顧客に紐付ける場合の参照先ID
   paired_customer_id: number | null;
   created_by: string | null;

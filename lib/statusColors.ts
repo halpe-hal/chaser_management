@@ -28,3 +28,20 @@ export const STATUS_ACCENT_COLORS: Record<CustomerStatus, string> = {
   "見込みなし（未来店）": "bg-gray-900",
   再予約済: "bg-teal-500",
 };
+
+// 予約管理画面のカードに表示する色。「未来店」だけは特別扱いで、checked_in_atが付くまでは白、
+// 付いたら（＝来店中）グレーにする。それ以外のステータスは常にステータス本来の色を表示する。
+export function scheduleCardColorClass(status: CustomerStatus, checkedIn: boolean): string {
+  if (status === "未来店") {
+    return checkedIn ? "bg-gray-300 text-gray-900" : "bg-white text-gray-700";
+  }
+  return STATUS_CARD_STYLES[status];
+}
+
+// 予約管理画面のカード枠線。未来店の人だけグレーの枠を付け、それ以外は枠なし（透明）にする。
+// Tailwindはソース上にリテラルで書かれたクラス名しかCSSを生成しないため、
+// 文字列を組み立てて border-* を動的に作る（例: .replace("bg-", "border-")）のは避け、
+// ここでは常に完全な形のクラス名を直接書く。
+export function scheduleCardBorderClass(status: CustomerStatus): string {
+  return status === "未来店" ? "border-gray-300" : "border-transparent";
+}

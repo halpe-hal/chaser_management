@@ -146,6 +146,22 @@ export async function updateCustomer(customerId: number, _prevState: unknown, fo
   return { success: true };
 }
 
+// 予約管理画面のカードから「来店中にする」「未来店に戻す」を押した時に呼ぶ。
+// checked_in_atはステータスとは別の一時的な印（カードの背景を白⇔ステータス色に切り替えるためだけのもの）。
+export async function setCustomerCheckedIn(customerId: number, checkedIn: boolean): Promise<{ error?: string } | void> {
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("customers")
+    .update({ checked_in_at: checkedIn ? new Date().toISOString() : null })
+    .eq("id", customerId);
+
+  if (error) {
+    return { error: "更新に失敗しました：" + error.message };
+  }
+
+  revalidatePath("/schedule");
+}
+
 // ペアでご来店の同伴者を、主予約者と同じ日時を引き継いだ別の顧客レコードとして作成する。
 // 名前・メール・電話・ステータスはこのあと本人の編集画面で入力してもらう。
 export async function createCompanion(primaryCustomerId: number): Promise<{ error?: string } | void> {

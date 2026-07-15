@@ -1,7 +1,8 @@
 import Link from "next/link";
 import type { ScheduleRow } from "@/lib/schedule";
 import type { Customer } from "@/lib/types";
-import { STATUS_CARD_STYLES } from "@/lib/statusColors";
+import { ScheduleCustomerCard } from "@/components/ScheduleCustomerCard";
+import { scheduleCardBorderClass } from "@/lib/statusColors";
 
 const CIRCLED_NUMBERS = ["①", "②", "③", "④", "⑤", "⑥", "⑦", "⑧", "⑨", "⑩"];
 
@@ -83,21 +84,12 @@ export function ScheduleGrid({
                   skipUntilIndex[slot] = rowIndex + rowSpan - 1;
                   return (
                     <td key={slot} rowSpan={rowSpan} className="px-2 py-2 align-top">
-                      <div className="rounded-lg overflow-hidden divide-y divide-black/10 h-full flex flex-col">
-                        <Link
-                          href={`/customers/${customer.id}`}
-                          className={`block px-3 py-2 font-medium hover:brightness-95 transition-[filter] ${STATUS_CARD_STYLES[customer.status]}`}
-                        >
-                          {customer.name} 様
-                        </Link>
+                      <div
+                        className={`rounded-lg overflow-hidden border divide-y divide-black/10 h-full flex flex-col ${scheduleCardBorderClass(customer.status)}`}
+                      >
+                        <ScheduleCustomerCard customer={customer} />
                         {companions.map((companion) => (
-                          <Link
-                            key={companion.id}
-                            href={`/customers/${companion.id}`}
-                            className={`block px-3 py-2 font-medium hover:brightness-95 transition-[filter] ${STATUS_CARD_STYLES[companion.status]}`}
-                          >
-                            {companion.name} 様
-                          </Link>
+                          <ScheduleCustomerCard key={companion.id} customer={companion} />
                         ))}
                         {customer.reservation_end_time && (
                           <div className="px-3 py-1 text-xs font-normal text-gray-600 bg-black/5 mt-auto">
