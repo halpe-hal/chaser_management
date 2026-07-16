@@ -4,11 +4,11 @@ import { useEffect, useRef, useState, useTransition } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
 import { setCustomerCheckedIn } from "@/app/actions/customers";
-import { scheduleCardColorClass } from "@/lib/statusColors";
+import { CHECK_IN_ELIGIBLE_STATUSES, scheduleCardColorClass } from "@/lib/statusColors";
 import type { Customer } from "@/lib/types";
 
 // 予約管理画面のカードの1行分（お客様名の部分）。常にステータス色で表示し、
-// ステータスが「未来店」の間だけ「来店中にする」で来店中専用の色に切り替えられる。
+// 「未来店」「再予約済」の間だけ「来店中にする」で来店中専用の色に切り替えられる。
 // 複数人が1枚のカードにまとまる（親のoverflow-hiddenで角丸に切り抜かれる）ので、
 // メニューはPortalでdocument.body直下に描画してクリップされないようにする。
 export function ScheduleCustomerCard({ customer }: { customer: Customer }) {
@@ -38,7 +38,7 @@ export function ScheduleCustomerCard({ customer }: { customer: Customer }) {
 
   const isCheckedIn = Boolean(customer.checked_in_at);
   const colorClass = scheduleCardColorClass(customer.status, isCheckedIn);
-  const canToggleCheckedIn = customer.status === "未来店";
+  const canToggleCheckedIn = CHECK_IN_ELIGIBLE_STATUSES.includes(customer.status);
 
   return (
     <>
@@ -76,7 +76,7 @@ export function ScheduleCustomerCard({ customer }: { customer: Customer }) {
                 }}
                 className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50"
               >
-                {isCheckedIn ? "未来店に戻す" : "来店中にする"}
+                {isCheckedIn ? "来店中を解除する" : "来店中にする"}
               </button>
             )}
           </div>,

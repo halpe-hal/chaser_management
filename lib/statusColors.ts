@@ -29,11 +29,19 @@ export const STATUS_ACCENT_COLORS: Record<CustomerStatus, string> = {
   再予約済: "bg-teal-500",
 };
 
-// 予約管理画面のカードに表示する色。「未来店」だけは特別扱いで、checked_in_atが付くまでは白、
-// 付いたら（＝来店中）グレーにする。それ以外のステータスは常にステータス本来の色を表示する。
+// 予約管理画面で「来店中にする」を選べるステータス（まだ来店の結果が確定していない人たち）
+export const CHECK_IN_ELIGIBLE_STATUSES: readonly CustomerStatus[] = ["未来店", "再予約済"];
+
+// 予約管理画面のカードに表示する色。
+// 「未来店」はcheck_in_atが付くまで白、付いたら（＝来店中）グレー。
+// 「再予約済」は普段通りステータス色（teal）のままだが、来店中にした時だけ同じグレーにする。
+// それ以外のステータスは常にステータス本来の色（このロジックの対象外）。
 export function scheduleCardColorClass(status: CustomerStatus, checkedIn: boolean): string {
+  if (checkedIn && CHECK_IN_ELIGIBLE_STATUSES.includes(status)) {
+    return "bg-gray-300 text-gray-900";
+  }
   if (status === "未来店") {
-    return checkedIn ? "bg-gray-300 text-gray-900" : "bg-white text-gray-700";
+    return "bg-white text-gray-700";
   }
   return STATUS_CARD_STYLES[status];
 }
