@@ -1,11 +1,12 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { CUSTOMER_STATUSES, type CustomerStatus } from "@/lib/types";
+import { CUSTOMER_STATUSES, type CustomerStatus, type StaffMember } from "@/lib/types";
 import { previewMassEmail, sendMassEmail, type MassEmailResult } from "@/app/actions/massEmail";
 
-export function MassEmailForm({ storeId }: { storeId: number }) {
+export function MassEmailForm({ storeId, staffMembers }: { storeId: number; staffMembers: StaffMember[] }) {
   const [statuses, setStatuses] = useState<CustomerStatus[]>([]);
+  const [staffId, setStaffId] = useState<string>("");
   const [subject, setSubject] = useState("");
   const [body, setBody] = useState("");
 
@@ -35,7 +36,7 @@ export function MassEmailForm({ storeId }: { storeId: number }) {
     }
     resetPreview();
     startPreview(async () => {
-      const preview = await previewMassEmail(storeId, statuses);
+      const preview = await previewMassEmail(storeId, statuses, staffId ? Number(staffId) : null);
       if (preview.error) {
         setPreviewError(preview.error);
         return;
@@ -47,10 +48,12 @@ export function MassEmailForm({ storeId }: { storeId: number }) {
 
   function handleSend() {
     if (statuses.length === 0 || !subject.trim() || !body.trim()) return;
-    if (!window.confirm(`選択した${statuses.length}ステータスの対象顧客 ${targetCount}件にメールを送信します。よろしいですか？`)) return;
+    const staffLabel = staffId ? `（担当：${staffMembers.find((s) => String(s.id) === staffId)?.name ?? ""}）` : "";
+    if (!window.confirm(`選択した${statuses.length}ステータス${staffLabel}の対象顧客 ${targetCount}件にメールを送信します。よろしいですか？`)) return;
 
     const formData = new FormData();
     statuses.forEach((s) => formData.append("status", s));
+    if (staffId) formData.set("staff_id", staffId);
     formData.set("subject", subject);
     formData.set("body", body);
 
@@ -80,6 +83,25 @@ export function MassEmailForm({ storeId }: { storeId: number }) {
             </label>
           ))}
         </div>
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">対応スタッフ（任意）</label>
+        <select
+          value={staffId}
+          onChange={(e) => {
+            setStaffId(e.target.value);
+            resetPreview();
+          }}
+          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+        >
+          <option value="">すべて</option>
+          {staffMembers.map((s) => (
+            <option key={s.id} value={s.id}>
+              {s.name}
+            </option>
+          ))}
+        </select>
       </div>
 
       <div>

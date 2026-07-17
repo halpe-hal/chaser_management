@@ -23,17 +23,23 @@ function hasEmail(customer: Customer): customer is Customer & { email: string } 
   return Boolean(customer.email);
 }
 
-async function loadTargets(storeId: number, statuses: CustomerStatus[]) {
+async function loadTargets(storeId: number, statuses: CustomerStatus[], staffId: number | null) {
   const supabase = await createClient();
-  const { data, error } = await supabase.from("customers").select("*").eq("store_id", storeId).in("status", statuses);
+  let query = supabase.from("customers").select("*").eq("store_id", storeId).in("status", statuses);
+  if (staffId !== null) query = query.eq("staff_member_id", staffId);
+  const { data, error } = await query;
   if (error) throw error;
   return ((data ?? []) as Customer[]).filter(hasEmail);
 }
 
 // 実際には送信せず、対象件数だけ確認できるようにする
-export async function previewMassEmail(storeId: number, statuses: CustomerStatus[]): Promise<MassEmailPreview> {
+export async function previewMassEmail(
+  storeId: number,
+  statuses: CustomerStatus[],
+  staffId: number | null
+): Promise<MassEmailPreview> {
   if (statuses.length === 0) return { error: "ステータスを選択してください。" };
-  const targets = await loadTargets(storeId, statuses);
+  const targets = await loadTargets(storeId, statuses, staffId);
   return {
     targetCount: targets.length,
     sampleNames: targets.slice(0, 20).map((c) => c.name),
@@ -46,6 +52,8 @@ export async function sendMassEmail(
   formData: FormData
 ): Promise<MassEmailResult> {
   const statuses = formData.getAll("status").map((s) => String(s)) as CustomerStatus[];
+  const staffIdRaw = String(formData.get("staff_id") ?? "");
+  const staffId = staffIdRaw ? Number(staffIdRaw) : null;
   const subject = String(formData.get("subject") ?? "").trim();
   const body = String(formData.get("body") ?? "").trim();
 
@@ -78,7 +86,7 @@ export async function sendMassEmail(
     .maybeSingle();
   const signature = (signatureRow as StoreEmailSignature | null)?.signature ?? null;
 
-  const targets = await loadTargets(storeId, statuses);
+  const targets = await loadTargets(storeId, statuses, staffId);
   if (targets.length === 0) {
     return { error: "対象の顧客（メールアドレス登録あり）がいません。" };
   }

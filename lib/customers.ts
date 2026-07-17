@@ -388,6 +388,7 @@ export interface CustomerListFilters {
   dateFrom?: string;
   dateTo?: string;
   sortBy?: CustomerSortBy;
+  staffId?: number | "all";
 }
 
 export async function getCustomers(storeId: number | null, filters: CustomerListFilters = {}): Promise<Customer[]> {
@@ -402,6 +403,7 @@ export async function getCustomers(storeId: number | null, filters: CustomerList
   }
   if (filters.dateFrom) query = query.gte("reservation_date", filters.dateFrom);
   if (filters.dateTo) query = query.lte("reservation_date", filters.dateTo);
+  if (filters.staffId && filters.staffId !== "all") query = query.eq("staff_member_id", filters.staffId);
 
   const { data, error } = await query;
   if (error) throw error;

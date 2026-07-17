@@ -1,10 +1,12 @@
 import { getAvailableStores, getValidatedStoreId } from "@/lib/stores";
+import { getStaffMembers } from "@/lib/staff";
 import { MassEmailForm } from "@/components/MassEmailForm";
 
 export default async function MassEmailPage() {
   const storeId = await getValidatedStoreId();
   const stores = await getAvailableStores();
   const storeName = stores.find((s) => s.id === storeId)?.name ?? "";
+  const staffMembers = storeId !== null ? await getStaffMembers(storeId) : [];
 
   return (
     <div className="space-y-6">
@@ -20,7 +22,7 @@ export default async function MassEmailPage() {
         <p className="text-sm text-gray-500">店舗が選択されていません。</p>
       ) : (
         <div className="bg-white rounded-2xl shadow-sm border border-black/5 p-6 max-w-2xl">
-          <MassEmailForm storeId={storeId} />
+          <MassEmailForm storeId={storeId} staffMembers={staffMembers} />
         </div>
       )}
     </div>

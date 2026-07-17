@@ -1,23 +1,28 @@
 import Link from "next/link";
 import { getValidatedStoreId } from "@/lib/stores";
 import { getCustomers, type CustomerSortBy } from "@/lib/customers";
+import { getStaffMembers } from "@/lib/staff";
 import { CustomerRow } from "@/components/CustomerRow";
 import { CUSTOMER_STATUSES, type CustomerStatus } from "@/lib/types";
 
 export default async function CustomersPage({
   searchParams,
 }: {
-  searchParams: Promise<{ status?: string; q?: string; date_from?: string; date_to?: string; sort?: string }>;
+  searchParams: Promise<{ status?: string; q?: string; date_from?: string; date_to?: string; sort?: string; staff_id?: string }>;
 }) {
-  const { status = "all", q = "", date_from = "", date_to = "", sort = "reservation_date" } = await searchParams;
+  const { status = "all", q = "", date_from = "", date_to = "", sort = "reservation_date", staff_id = "all" } = await searchParams;
   const storeId = await getValidatedStoreId();
-  const customers = await getCustomers(storeId, {
-    status: status as CustomerStatus | "all",
-    search: q,
-    dateFrom: date_from,
-    dateTo: date_to,
-    sortBy: sort as CustomerSortBy,
-  });
+  const [customers, staffMembers] = await Promise.all([
+    getCustomers(storeId, {
+      status: status as CustomerStatus | "all",
+      search: q,
+      dateFrom: date_from,
+      dateTo: date_to,
+      sortBy: sort as CustomerSortBy,
+      staffId: staff_id === "all" ? "all" : Number(staff_id),
+    }),
+    storeId !== null ? getStaffMembers(storeId) : Promise.resolve([]),
+  ]);
 
   return (
     <div className="space-y-6">
@@ -65,6 +70,17 @@ export default async function CustomersPage({
         <div>
           <label className="block text-xs text-gray-500 mb-1">ご予約日（まで）</label>
           <input type="date" name="date_to" defaultValue={date_to} className="border border-gray-300 rounded-lg px-3 py-2 text-sm" />
+        </div>
+        <div>
+          <label className="block text-xs text-gray-500 mb-1">対応スタッフ</label>
+          <select name="staff_id" defaultValue={staff_id} className="border border-gray-300 rounded-lg px-3 py-2 text-sm">
+            <option value="all">すべて</option>
+            {staffMembers.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.name}
+              </option>
+            ))}
+          </select>
         </div>
         <div>
           <label className="block text-xs text-gray-500 mb-1">並び順</label>
