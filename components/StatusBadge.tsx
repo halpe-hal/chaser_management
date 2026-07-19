@@ -5,6 +5,7 @@ const STATUS_STYLES: Record<CustomerStatus, string> = {
   "入会（２年）": "bg-emerald-50 text-emerald-700 border-emerald-300",
   "入会（1年）": "bg-emerald-50 text-emerald-700 border-emerald-300",
   "入会（通常）": "bg-emerald-50 text-emerald-700 border-emerald-300",
+  退会: "bg-slate-100 text-slate-700 border-slate-400",
   検討: "bg-amber-50 text-amber-700 border-amber-300",
   "見込みなし（来店済）": "bg-black text-white border-black",
   再予約済: "bg-teal-50 text-teal-700 border-teal-300",

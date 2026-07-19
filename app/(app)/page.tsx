@@ -33,7 +33,7 @@ export default async function DashboardPage({
 
       <DashboardStatsCards stats={stats} />
 
-      <StatusCountCards counts={counts} />
+      <StatusCountCards counts={counts} columns={6} />
 
       {staffJoinRates && <StaffJoinRateTable rates={staffJoinRates} />}
     </div>

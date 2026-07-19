@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { assignSlotNumber, getScheduleCapacityForDate } from "@/lib/schedule";
-import { autoSkipPassedFixedDateSteps, computeRebookFlagUpdates } from "@/lib/customers";
+import { autoSkipPassedFixedDateSteps, computeStatusFlagUpdates } from "@/lib/customers";
 import type { CustomerStatus } from "@/lib/types";
 
 function readCustomerFields(formData: FormData) {
@@ -55,7 +55,7 @@ export async function createCustomer(_prevState: unknown, formData: FormData) {
   }
 
   // 新規登録時点のステータスがすでに事前キャンセル/無断キャンセル/再予約済であるケース（稀だが起こりうる）に対応
-  const flagUpdates = computeRebookFlagUpdates("未来店", fields.status);
+  const flagUpdates = computeStatusFlagUpdates("未来店", fields.status);
 
   const { data, error } = await supabase
     .from("customers")
@@ -124,7 +124,7 @@ export async function updateCustomer(customerId: number, _prevState: unknown, fo
   }
 
   const statusChanged = current !== null && current.status !== fields.status;
-  const flagUpdates = statusChanged ? computeRebookFlagUpdates(current.status, fields.status) : {};
+  const flagUpdates = statusChanged ? computeStatusFlagUpdates(current.status, fields.status) : {};
 
   const { error } = await supabase
     .from("customers")
