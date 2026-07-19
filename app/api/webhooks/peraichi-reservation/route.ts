@@ -142,7 +142,7 @@ export async function POST(request: Request) {
   let slotNumber: number | null = null;
   if (reservationTime) {
     const capacity = await getScheduleCapacityForDate(storeId, reservationDate, supabase);
-    slotNumber = await assignSlotNumber(supabase, storeId, reservationDate, reservationTime, capacity);
+    slotNumber = await assignSlotNumber(supabase, storeId, reservationDate, reservationTime, reservationEndTime, capacity);
   }
 
   // 複数マッチしてしまった場合、最新の1件だけを移動させ、それ以外は再予約済にするだけにとどめる

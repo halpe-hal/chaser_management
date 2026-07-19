@@ -2,6 +2,7 @@ import iconv from "iconv-lite";
 import { parse } from "csv-parse/sync";
 import { ceilTimeToHour } from "@/lib/date";
 import { detectPartySizeFromText, withPartySizeSuffix } from "@/lib/partySize";
+import { timeRangesOverlap } from "@/lib/schedule";
 import type { CustomerStatus } from "@/lib/types";
 
 export interface ParsedReservationRow {
@@ -132,6 +133,7 @@ export interface ExistingCustomerRow {
   phone: string | null;
   reservation_date: string;
   reservation_time: string | null;
+  reservation_end_time: string | null;
   slot_number: number | null;
   status: CustomerStatus;
   created_at: string;
@@ -201,23 +203,36 @@ export function buildCsvImportPlan(
     return matches;
   }
 
-  // 予約枠（date+time）ごとに、既に使われているslot_numberを集計しておく（CSV内の複数行も同じ枠を取り合うため逐次更新する）
-  const usedSlotsByDateTime = new Map<string, Set<number>>();
+  // 日付ごとに、既に使われている予約枠（開始・終了時刻つき）を集計しておく
+  // （CSV内の複数行も同じ枠を取り合うため逐次追加していく）。開始時刻の完全一致だけでなく、
+  // 終了時刻をまたいで時間帯が重なる予約も同じ枠を使えないよう判定する。
+  interface SlotBooking {
+    slot: number;
+    start: string;
+    end: string | null;
+  }
+  const bookingsByDate = new Map<string, SlotBooking[]>();
   for (const c of existingRows) {
     if (!c.reservation_time || c.slot_number === null) continue;
-    const key = `${c.reservation_date}|${c.reservation_time.slice(0, 5)}`;
-    if (!usedSlotsByDateTime.has(key)) usedSlotsByDateTime.set(key, new Set());
-    usedSlotsByDateTime.get(key)!.add(c.slot_number);
+    const list = bookingsByDate.get(c.reservation_date) ?? [];
+    list.push({
+      slot: c.slot_number,
+      start: c.reservation_time.slice(0, 5),
+      end: c.reservation_end_time?.slice(0, 5) ?? null,
+    });
+    bookingsByDate.set(c.reservation_date, list);
   }
 
-  function assignSlot(date: string, time: string): number | null {
+  function assignSlot(date: string, time: string, endTime: string | null): number | null {
     const capacity = resolveCapacity(date);
-    const key = `${date}|${time}`;
-    const used = usedSlotsByDateTime.get(key) ?? new Set<number>();
+    const bookings = bookingsByDate.get(date) ?? [];
+    const used = new Set(
+      bookings.filter((b) => timeRangesOverlap(time, endTime, b.start, b.end)).map((b) => b.slot)
+    );
     for (let slot = 1; slot <= capacity; slot++) {
       if (!used.has(slot)) {
-        used.add(slot);
-        usedSlotsByDateTime.set(key, used);
+        bookings.push({ slot, start: time, end: endTime });
+        bookingsByDate.set(date, bookings);
         return slot;
       }
     }
@@ -251,7 +266,7 @@ export function buildCsvImportPlan(
 
     let slotNumber: number | null = null;
     if (row.reservationTime) {
-      slotNumber = assignSlot(row.reservationDate, row.reservationTime);
+      slotNumber = assignSlot(row.reservationDate, row.reservationTime, row.reservationEndTime);
     }
     const slotFull = Boolean(row.reservationTime) && slotNumber === null;
 

@@ -48,7 +48,14 @@ export async function createCustomer(_prevState: unknown, formData: FormData) {
   let slotNumber: number | null = null;
   if (fields.reservation_time) {
     const capacity = await getScheduleCapacityForDate(storeId, fields.reservation_date, supabase);
-    slotNumber = await assignSlotNumber(supabase, storeId, fields.reservation_date, fields.reservation_time, capacity);
+    slotNumber = await assignSlotNumber(
+      supabase,
+      storeId,
+      fields.reservation_date,
+      fields.reservation_time,
+      fields.reservation_end_time,
+      capacity
+    );
     if (slotNumber === null) {
       return { error: "この時間帯は満席です。別の時間を選んでください。" };
     }
@@ -94,13 +101,16 @@ export async function updateCustomer(customerId: number, _prevState: unknown, fo
 
   const { data: current } = await supabase
     .from("customers")
-    .select("store_id, status, reservation_date, reservation_time, slot_number, paired_customer_id")
+    .select("store_id, status, reservation_date, reservation_time, reservation_end_time, slot_number, paired_customer_id")
     .eq("id", customerId)
     .single();
 
   let slotNumber: number | null = current?.slot_number ?? null;
   const dateOrTimeChanged =
-    !current || current.reservation_date !== fields.reservation_date || current.reservation_time !== fields.reservation_time;
+    !current ||
+    current.reservation_date !== fields.reservation_date ||
+    current.reservation_time !== fields.reservation_time ||
+    current.reservation_end_time !== fields.reservation_end_time;
 
   // 同伴者（他の顧客に紐付いている）は自分の枠を消費しない。主予約者と同じセルに表示されるだけなので、
   // 予約枠（slot_number）は常に持たせない。
@@ -113,6 +123,7 @@ export async function updateCustomer(customerId: number, _prevState: unknown, fo
       current.store_id,
       fields.reservation_date,
       fields.reservation_time,
+      fields.reservation_end_time,
       capacity,
       customerId
     );

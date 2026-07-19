@@ -101,26 +101,47 @@ export async function getReservationsForDate(storeId: number, dateStr: string, c
   return (data ?? []) as Customer[];
 }
 
-// 指定の店舗・日付・時間で、空いている予約枠番号(1..capacity)を1つ確保する。満席の場合は null を返す。
+// 2つの時間帯（開始時刻・終了時刻）が重なっているかどうか。終了時刻が無い方は「開始時刻の瞬間だけ
+// 占有する点」として扱う（＝相手の範囲に含まれる時、または双方とも点で開始時刻が一致する時に重なる）。
+// CSVインポートの枠割り当て（lib/csvImport.ts）でも同じ判定を使うため、公開関数にしてある。
+export function timeRangesOverlap(aStart: string, aEnd: string | null, bStart: string, bEnd: string | null): boolean {
+  const aHasRange = aEnd !== null && aEnd !== aStart;
+  const bHasRange = bEnd !== null && bEnd !== bStart;
+
+  if (!aHasRange && !bHasRange) return aStart === bStart;
+  if (!aHasRange) return aStart >= bStart && aStart < (bEnd as string);
+  if (!bHasRange) return bStart >= aStart && bStart < (aEnd as string);
+  return aStart < (bEnd as string) && bStart < (aEnd as string);
+}
+
+// 指定の店舗・日付・時間帯で、空いている予約枠番号(1..capacity)を1つ確保する。満席の場合は null を返す。
+// 開始時刻が完全一致する予約だけでなく、終了時刻をまたいで時間帯が重なる予約も同じ枠を使えないよう判定する
+// （例: 11:00〜13:00の予約がある枠に、12:00〜14:00の予約を割り当てて表示上ダブりが起きるのを防ぐ）。
 export async function assignSlotNumber(
   supabase: SupabaseClient,
   storeId: number,
   date: string,
   time: string,
+  endTime: string | null,
   capacity: number,
   excludeCustomerId?: number
 ): Promise<number | null> {
   let query = supabase
     .from("customers")
-    .select("slot_number")
+    .select("slot_number, reservation_time, reservation_end_time")
     .eq("store_id", storeId)
     .eq("reservation_date", date)
-    .eq("reservation_time", time)
-    .not("slot_number", "is", null);
+    .not("slot_number", "is", null)
+    .not("reservation_time", "is", null);
   if (excludeCustomerId) query = query.neq("id", excludeCustomerId);
 
   const { data } = await query;
-  const used = new Set((data ?? []).map((r) => r.slot_number as number));
+  const rows = (data ?? []) as { slot_number: number; reservation_time: string; reservation_end_time: string | null }[];
+
+  const overlapping = rows.filter((r) =>
+    timeRangesOverlap(time, endTime, r.reservation_time.slice(0, 5), r.reservation_end_time?.slice(0, 5) ?? null)
+  );
+  const used = new Set(overlapping.map((r) => r.slot_number));
 
   for (let slot = 1; slot <= capacity; slot++) {
     if (!used.has(slot)) return slot;

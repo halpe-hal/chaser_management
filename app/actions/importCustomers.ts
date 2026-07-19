@@ -43,7 +43,7 @@ async function parseAndBuildPlan(
   const [{ data: existingData }, defaultCapacity, capacityOverrides] = await Promise.all([
     supabase
       .from("customers")
-      .select("id, email, phone, reservation_date, reservation_time, slot_number, status, created_at")
+      .select("id, email, phone, reservation_date, reservation_time, reservation_end_time, slot_number, status, created_at")
       .eq("store_id", storeId),
     getDefaultScheduleCapacity(storeId, supabase),
     getCapacityOverrides(storeId, supabase),
